@@ -1,42 +1,22 @@
-const STORAGE_KEY = "gym-score-data";
-const RESET_ONCE_KEY = "gym-demo-reset-once";
+import { db } from "./firebase.js";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-const DEFAULT_DATA = {
+const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"],
-  clubs: ["Northstar", "Riverdale", "Skyline", "Aurora", "Summit", "Cascade"],
-  athletes: [],
-  scores: [],
-  streamState: { mode: "idle", performerId: null, mixSeconds: 20 },
-  lastUpdated: null
+  groupTypes: ["Individual", "Group"]
 };
 
-function resetDemoDataOnce() {
-  if (!localStorage.getItem(RESET_ONCE_KEY)) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    localStorage.setItem(RESET_ONCE_KEY, "1");
-  }
-}
-
-function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    return { ...DEFAULT_DATA };
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.athletes || !parsed.scores) {
-      throw new Error("Invalid data");
-    }
-    return parsed;
-  } catch {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    return { ...DEFAULT_DATA };
-  }
-}
+const settingsRef = doc(db, "settings", "current");
+const athletesCol = collection(db, "athletes");
+const scoresCol = collection(db, "scores");
 
 const filterCategory = document.querySelector("#filter-category");
 const filterGroup = document.querySelector("#filter-group");
@@ -46,25 +26,9 @@ const contextLabel = document.querySelector("#current-context");
 const lastUpdated = document.querySelector("#last-updated");
 const scoreboardCard = document.querySelector("#scoreboard");
 
-resetDemoDataOnce();
-let data = loadData();
-
-function normalizeData() {
-  let updated = false;
-  if (!Array.isArray(data.categories) || data.categories.length === 0 || data.categories.some((c) => c.toLowerCase().includes("women"))) {
-    updated = true;
-    data.categories = [...DEFAULT_DATA.categories];
-  }
-  if (!Array.isArray(data.grades) || data.grades.length === 0) {
-    updated = true;
-    data.grades = [...DEFAULT_DATA.grades];
-  }
-  if (updated) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-}
-
-normalizeData();
+let settings = { ...DEFAULT_SETTINGS };
+let athletes = [];
+let scores = [];
 
 function fillSelect(select, options, selectedValue) {
   select.innerHTML = "";
@@ -80,9 +44,9 @@ function fillSelect(select, options, selectedValue) {
 }
 
 function populateFilters() {
-  fillSelect(filterCategory, ["All", ...data.categories], "All");
-  fillSelect(filterGroup, ["All", ...data.groupTypes], "All");
-  const clubs = [...new Set(data.athletes.map((athlete) => athlete.club))];
+  fillSelect(filterCategory, ["All", ...settings.categories], "All");
+  fillSelect(filterGroup, ["All", ...settings.groupTypes], "All");
+  const clubs = [...new Set(athletes.map((athlete) => athlete.club))];
   fillSelect(filterClub, ["All", ...clubs], "All");
 }
 
@@ -92,12 +56,22 @@ function buildContextLabel() {
   contextLabel.textContent = `${categoryLabel}${groupLabel}`;
 }
 
+function toDate(value) {
+  if (!value) {
+    return new Date(0);
+  }
+  if (value.toDate) {
+    return value.toDate();
+  }
+  return new Date(value);
+}
+
 function renderScores() {
   tbody.innerHTML = "";
 
-  const filteredScores = data.scores
+  const filteredScores = scores
     .map((score) => {
-      const athlete = data.athletes.find((entry) => entry.id === score.athleteId);
+      const athlete = athletes.find((entry) => entry.id === score.athleteId);
       return {
         ...score,
         athleteName: athlete ? athlete.name : "Unknown",
@@ -142,12 +116,15 @@ function renderScores() {
 }
 
 function updateLastUpdated() {
-  if (!data.lastUpdated) {
+  if (!scores.length) {
     lastUpdated.textContent = "Last updated: --";
     return;
   }
-  const timestamp = new Date(data.lastUpdated);
-  lastUpdated.textContent = `Last updated: ${timestamp.toLocaleString()}`;
+  const latest = scores.reduce((max, score) => {
+    const date = toDate(score.timestamp);
+    return date > max ? date : max;
+  }, new Date(0));
+  lastUpdated.textContent = `Last updated: ${latest.toLocaleString()}`;
 }
 
 function renderAll() {
@@ -160,12 +137,27 @@ filterCategory.addEventListener("change", renderAll);
 filterGroup.addEventListener("change", renderAll);
 filterClub.addEventListener("change", renderAll);
 
-window.addEventListener("storage", (event) => {
-  if (event.key === STORAGE_KEY) {
-    data = loadData();
+onSnapshot(settingsRef, (snap) => {
+  if (!snap.exists()) {
+    settings = { ...DEFAULT_SETTINGS };
     populateFilters();
     renderAll();
+    return;
   }
+  settings = { ...DEFAULT_SETTINGS, ...snap.data() };
+  populateFilters();
+  renderAll();
+});
+
+onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
+  athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  populateFilters();
+  renderAll();
+});
+
+onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
+  scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  renderAll();
 });
 
 populateFilters();

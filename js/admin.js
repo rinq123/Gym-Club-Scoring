@@ -1,52 +1,25 @@
 import { db } from "./firebase.js";
-import { doc, setDoc } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+import {
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  addDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  getDocs,
+  writeBatch
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-const pingRef = doc(db, "settings", "current");
-setDoc(pingRef, { lastPing: new Date().toISOString() }, { merge: true });
-
-const STORAGE_KEY = "gym-score-data";
-const RESET_ONCE_KEY = "gym-demo-reset-once";
-
-const DEFAULT_DATA = {
+const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"],
-  clubs: ["Northstar", "Riverdale", "Skyline", "Aurora", "Summit", "Cascade"],
-  athletes: [],
-  scores: [],
-  streamState: { mode: "idle", performerId: null, mixSeconds: 20 },
-  lastUpdated: null
+  groupTypes: ["Individual", "Group"]
 };
-
-function resetDemoDataOnce() {
-  if (!localStorage.getItem(RESET_ONCE_KEY)) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    localStorage.setItem(RESET_ONCE_KEY, "1");
-  }
-}
-
-function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    return { ...DEFAULT_DATA };
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.athletes || !parsed.scores) {
-      throw new Error("Invalid data");
-    }
-    return parsed;
-  } catch {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    return { ...DEFAULT_DATA };
-  }
-}
-
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
 
 const execInput = document.querySelector('[name="execution"]');
 const diffInput = document.querySelector('[name="difficulty"]');
@@ -68,51 +41,15 @@ const streamStatus = document.querySelector("#stream-status");
 const streamButtons = document.querySelectorAll("[data-stream]");
 const resetDemoBtn = document.querySelector("#reset-demo");
 
-resetDemoDataOnce();
-const data = loadData();
+const settingsRef = doc(db, "settings", "current");
+const streamRef = doc(db, "streamState", "current");
+const athletesCol = collection(db, "athletes");
+const scoresCol = collection(db, "scores");
 
-function normalizeData() {
-  let updated = false;
-  if (!Array.isArray(data.categories) || data.categories.length === 0 || data.categories.some((c) => c.toLowerCase().includes("women"))) {
-    updated = true;
-    data.categories = [...DEFAULT_DATA.categories];
-  }
-  if (!Array.isArray(data.grades) || data.grades.length === 0) {
-    updated = true;
-    data.grades = [...DEFAULT_DATA.grades];
-  }
-  if (!data.streamState) {
-    updated = true;
-    data.streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
-  } else {
-    if (!data.streamState.mode) {
-      updated = true;
-      data.streamState.mode = "idle";
-    }
-    if (typeof data.streamState.performerId === "undefined") {
-      updated = true;
-      data.streamState.performerId = null;
-    }
-    if (!data.streamState.mixSeconds) {
-      updated = true;
-      data.streamState.mixSeconds = 20;
-    }
-  }
-  data.athletes = data.athletes.map((athlete) => {
-    if (!Array.isArray(athlete.categoryTags)) {
-      updated = true;
-      return { ...athlete, categoryTags: [...data.categories] };
-    }
-    if (!Array.isArray(athlete.gradeTags)) {
-      updated = true;
-      return { ...athlete, gradeTags: [...data.grades] };
-    }
-    return athlete;
-  });
-  if (updated) {
-    saveData();
-  }
-}
+let settings = { ...DEFAULT_SETTINGS };
+let athletes = [];
+let scores = [];
+let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
 
 function fillSelect(select, options) {
   select.innerHTML = "";
@@ -124,21 +61,13 @@ function fillSelect(select, options) {
   });
 }
 
-function fillSelectWithValue(select, options, value) {
-  fillSelect(select, options);
-  if (value && options.includes(value)) {
-    select.value = value;
-  }
-}
-
-function renderTagOptions(container, options, prefix) {
+function renderTagOptions(container, options) {
   container.innerHTML = "";
   options.forEach((option) => {
     const label = document.createElement("label");
     const input = document.createElement("input");
     input.type = "checkbox";
     input.value = option;
-    input.name = `${prefix}-${option}`;
     label.append(input, document.createTextNode(option));
     container.appendChild(label);
   });
@@ -152,7 +81,8 @@ function getSelectedTags(container) {
 
 function renderClubOptions() {
   clubOptions.innerHTML = "";
-  data.clubs.forEach((club) => {
+  const clubs = [...new Set(athletes.map((athlete) => athlete.club))];
+  clubs.forEach((club) => {
     const option = document.createElement("option");
     option.value = club;
     clubOptions.appendChild(option);
@@ -163,15 +93,11 @@ function renderAthleteOptions() {
   const category = categorySelect.value;
   athleteSelect.innerHTML = "";
   const scoredIds = new Set(
-    data.scores
-      .filter((score) => score.category === category)
-      .map((score) => score.athleteId)
+    scores.filter((score) => score.category === category).map((score) => score.athleteId)
   );
 
-  const eligible = data.athletes.filter(
-    (athlete) =>
-      athlete.categoryTags.includes(category) &&
-      !scoredIds.has(athlete.id)
+  const eligible = athletes.filter(
+    (athlete) => athlete.categoryTags.includes(category) && !scoredIds.has(athlete.id)
   );
 
   if (!eligible.length) {
@@ -199,21 +125,21 @@ function renderStreamPerformerOptions() {
   optionNone.textContent = "No performer selected";
   streamPerformer.appendChild(optionNone);
 
-  data.athletes.forEach((athlete) => {
+  athletes.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
     option.textContent = `${athlete.name} (${athlete.groupType}, ${athlete.club})`;
     streamPerformer.appendChild(option);
   });
 
-  if (data.streamState.performerId) {
-    streamPerformer.value = data.streamState.performerId;
+  if (streamState.performerId) {
+    streamPerformer.value = streamState.performerId;
   }
 }
 
 function renderAthleteList() {
   athleteList.innerHTML = "";
-  data.athletes.forEach((athlete) => {
+  athletes.forEach((athlete) => {
     const item = document.createElement("li");
     const text = document.createElement("span");
     const categoryLabel = athlete.categoryTags.join(", ") || "None";
@@ -223,28 +149,24 @@ function renderAthleteList() {
     removeBtn.type = "button";
     removeBtn.className = "btn ghost btn-small";
     removeBtn.textContent = "Delete";
-    removeBtn.addEventListener("click", () => {
-      data.athletes = data.athletes.filter((entry) => entry.id !== athlete.id);
-      data.scores = data.scores.filter((score) => score.athleteId !== athlete.id);
-      data.lastUpdated = new Date().toISOString();
-      saveData();
-      renderAthleteList();
-      renderAthleteOptions();
-      renderStreamPerformerOptions();
-      renderRecent();
+    removeBtn.addEventListener("click", async () => {
+      await deleteDoc(doc(db, "athletes", athlete.id));
+      const scoreQuery = query(scoresCol);
+      const snapshot = await getDocs(scoreQuery);
+      const batch = writeBatch(db);
+      snapshot.forEach((docSnap) => {
+        if (docSnap.data().athleteId === athlete.id) {
+          batch.delete(docSnap.ref);
+        }
+      });
+      await batch.commit();
+      if (streamState.performerId === athlete.id) {
+        await setDoc(streamRef, { performerId: null, mode: "idle", updatedAt: serverTimestamp() }, { merge: true });
+      }
     });
     item.append(text, removeBtn);
     athleteList.appendChild(item);
   });
-}
-
-function populateOptions() {
-  fillSelect(categorySelect, data.categories);
-  renderAthleteOptions();
-  renderStreamPerformerOptions();
-  renderTagOptions(categoryTagsContainer, data.categories, "category");
-  renderTagOptions(gradeTagsContainer, data.grades, "grade");
-  renderClubOptions();
 }
 
 function updateTotal() {
@@ -255,9 +177,7 @@ function updateTotal() {
 
 function renderRecent() {
   recentList.innerHTML = "";
-  const recentScores = [...data.scores]
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 8);
+  const recentScores = [...scores].slice(0, 8);
 
   if (!recentScores.length) {
     const item = document.createElement("li");
@@ -267,7 +187,7 @@ function renderRecent() {
   }
 
   recentScores.forEach((score) => {
-    const athlete = data.athletes.find((entry) => entry.id === score.athleteId);
+    const athlete = athletes.find((entry) => entry.id === score.athleteId);
     const item = document.createElement("li");
     const text = document.createElement("span");
     const athleteName = athlete ? athlete.name : "Unknown";
@@ -276,48 +196,130 @@ function renderRecent() {
     removeBtn.type = "button";
     removeBtn.className = "btn ghost btn-small";
     removeBtn.textContent = "Delete";
-    removeBtn.addEventListener("click", () => {
-      data.scores = data.scores.filter((entry) => entry.id !== score.id);
-      data.lastUpdated = new Date().toISOString();
-      saveData();
-      renderRecent();
-      renderAthleteOptions();
-      renderStreamPerformerOptions();
+    removeBtn.addEventListener("click", async () => {
+      await deleteDoc(doc(db, "scores", score.id));
     });
     item.append(text, removeBtn);
     recentList.appendChild(item);
   });
 }
 
+function updateStreamStatus() {
+  const modeLabel = streamState.mode === "mix" ? "Idle + Scoreboard Mix" :
+    streamState.mode === "scoreboard" ? "Scoreboard Only" :
+    streamState.mode === "spotlight" ? "Spotlight" : "Idle";
+  streamStatus.textContent = `Mode: ${modeLabel}`;
+  streamButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.stream === streamState.mode);
+  });
+}
+
+async function ensureSettings() {
+  const snap = await getDoc(settingsRef);
+  if (!snap.exists()) {
+    await setDoc(settingsRef, DEFAULT_SETTINGS);
+    return;
+  }
+  const data = snap.data();
+  const needsUpdate = !Array.isArray(data.categories)
+    || data.categories.length === 0
+    || data.categories.some((c) => c.toLowerCase().includes("women"))
+    || !Array.isArray(data.grades)
+    || data.grades.length === 0
+    || !Array.isArray(data.groupTypes)
+    || data.groupTypes.length === 0;
+
+  if (needsUpdate) {
+    await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
+  }
+}
+
+async function ensureStreamState() {
+  const snap = await getDoc(streamRef);
+  if (!snap.exists()) {
+    await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
+  }
+}
+
+function toDate(value) {
+  if (!value) {
+    return new Date(0);
+  }
+  if (value.toDate) {
+    return value.toDate();
+  }
+  return new Date(value);
+}
+
+function subscribe() {
+  onSnapshot(settingsRef, (snap) => {
+    if (!snap.exists()) {
+      settings = { ...DEFAULT_SETTINGS };
+      fillSelect(categorySelect, settings.categories);
+      renderTagOptions(categoryTagsContainer, settings.categories);
+      renderTagOptions(gradeTagsContainer, settings.grades);
+      return;
+    }
+    settings = { ...DEFAULT_SETTINGS, ...snap.data() };
+    fillSelect(categorySelect, settings.categories);
+    renderTagOptions(categoryTagsContainer, settings.categories);
+    renderTagOptions(gradeTagsContainer, settings.grades);
+    renderAthleteOptions();
+  });
+
+  onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
+    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderClubOptions();
+    renderAthleteOptions();
+    renderAthleteList();
+    renderStreamPerformerOptions();
+  });
+
+  onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
+    scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderRecent();
+  });
+
+  onSnapshot(streamRef, (snap) => {
+    if (!snap.exists()) {
+      streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+      updateStreamStatus();
+      return;
+    }
+    streamState = { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() };
+    updateStreamStatus();
+    renderStreamPerformerOptions();
+  });
+}
+
 execInput.addEventListener("input", updateTotal);
 diffInput.addEventListener("input", updateTotal);
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const execution = parseFloat(execInput.value);
   const difficulty = parseFloat(diffInput.value);
   const category = categorySelect.value;
   const athleteId = athleteSelect.value;
+  const athlete = athletes.find((entry) => entry.id === athleteId);
 
   if (!athleteId || Number.isNaN(execution) || Number.isNaN(difficulty)) {
     return;
   }
 
   const total = parseFloat((execution + difficulty).toFixed(3));
-  const timestamp = new Date().toISOString();
-  data.scores.unshift({
-    id: `s${Date.now()}`,
+  const grade = athlete?.gradeTags?.length === 1 ? athlete.gradeTags[0] : null;
+
+  await addDoc(scoresCol, {
     athleteId,
     category,
+    grade,
     execution,
     difficulty,
     total,
-    timestamp
+    timestamp: serverTimestamp()
   });
-  data.lastUpdated = timestamp;
-  saveData();
-  renderRecent();
-  renderAthleteOptions();
+
   form.reset();
   updateTotal();
 });
@@ -326,49 +328,35 @@ form.addEventListener("reset", () => {
   setTimeout(updateTotal, 0);
 });
 
-function updateStreamStatus() {
-  const modeLabel = data.streamState.mode === "mix" ? "Idle + Scoreboard Mix" :
-    data.streamState.mode === "scoreboard" ? "Scoreboard Only" :
-    data.streamState.mode === "spotlight" ? "Spotlight" : "Idle";
-  streamStatus.textContent = `Mode: ${modeLabel}`;
-  streamButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.stream === data.streamState.mode);
-  });
-}
-
-streamPerformer.addEventListener("change", () => {
-  data.streamState.performerId = streamPerformer.value || null;
-  if (data.streamState.performerId) {
-    data.streamState.mode = "spotlight";
-  }
-  data.lastUpdated = new Date().toISOString();
-  saveData();
-  updateStreamStatus();
+streamPerformer.addEventListener("change", async () => {
+  const performerId = streamPerformer.value || null;
+  const mode = performerId ? "spotlight" : "idle";
+  await setDoc(streamRef, { performerId, mode, updatedAt: serverTimestamp() }, { merge: true });
 });
 
 streamButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    data.streamState.mode = button.dataset.stream;
-    if (data.streamState.mode !== "spotlight") {
-      data.streamState.performerId = null;
-      streamPerformer.value = "";
-    }
-    data.lastUpdated = new Date().toISOString();
-    saveData();
-    updateStreamStatus();
+  button.addEventListener("click", async () => {
+    const mode = button.dataset.stream;
+    const performerId = mode === "spotlight" ? streamState.performerId : null;
+    await setDoc(streamRef, { mode, performerId, updatedAt: serverTimestamp() }, { merge: true });
   });
 });
 
-resetDemoBtn.addEventListener("click", () => {
+resetDemoBtn.addEventListener("click", async () => {
   if (!window.confirm("Reset all demo data? This clears scores and roster changes.")) {
     return;
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-  localStorage.setItem(RESET_ONCE_KEY, "1");
-  window.location.reload();
+  const athleteSnap = await getDocs(athletesCol);
+  const scoreSnap = await getDocs(scoresCol);
+  const batch = writeBatch(db);
+  athleteSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  scoreSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  await batch.commit();
+  await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
+  await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
 });
 
-athleteForm.addEventListener("submit", (event) => {
+athleteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = athleteNameInput.value.trim();
   const club = athleteClubInput.value.trim();
@@ -380,34 +368,23 @@ athleteForm.addEventListener("submit", (event) => {
     return;
   }
 
-  if (!data.clubs.includes(club)) {
-    data.clubs.push(club);
-  }
-
-  data.athletes.push({
-    id: `a${Date.now()}`,
+  await addDoc(athletesCol, {
     name,
     club,
     groupType,
     categoryTags,
-    gradeTags
+    gradeTags,
+    createdAt: serverTimestamp()
   });
-  data.lastUpdated = new Date().toISOString();
-  saveData();
-  renderAthleteList();
-  renderAthleteOptions();
-  renderStreamPerformerOptions();
-  renderClubOptions();
+
   athleteForm.reset();
 });
 
 categorySelect.addEventListener("change", renderAthleteOptions);
 
-normalizeData();
-populateOptions();
-renderAthleteList();
-renderRecent();
-updateTotal();
-updateStreamStatus();
-
-
+(async function init() {
+  await ensureSettings();
+  await ensureStreamState();
+  updateTotal();
+  subscribe();
+})();

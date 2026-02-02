@@ -1,57 +1,23 @@
-const STORAGE_KEY = "gym-score-data";
-const RESET_ONCE_KEY = "gym-demo-reset-once";
+import { db } from "./firebase.js";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-const DEFAULT_DATA = {
+const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"],
-  clubs: [],
-  athletes: [],
-  scores: [],
-  streamState: { mode: "idle", performerId: null, mixSeconds: 20 },
-  lastUpdated: null
+  groupTypes: ["Individual", "Group"]
 };
 
-function resetDemoDataOnce() {
-  if (!localStorage.getItem(RESET_ONCE_KEY)) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    localStorage.setItem(RESET_ONCE_KEY, "1");
-  }
-}
-
-function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    return { ...DEFAULT_DATA };
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.athletes || !parsed.scores) {
-      throw new Error("Invalid data");
-    }
-    return parsed;
-  } catch {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DATA));
-    return { ...DEFAULT_DATA };
-  }
-}
-
-function normalizeData(data) {
-  let updated = false;
-  if (!Array.isArray(data.categories) || data.categories.length === 0 || data.categories.some((c) => c.toLowerCase().includes("women"))) {
-    updated = true;
-    data.categories = [...DEFAULT_DATA.categories];
-  }
-  if (!Array.isArray(data.grades) || data.grades.length === 0) {
-    updated = true;
-    data.grades = [...DEFAULT_DATA.grades];
-  }
-  if (updated) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-}
+const settingsRef = doc(db, "settings", "current");
+const streamRef = doc(db, "streamState", "current");
+const athletesCol = collection(db, "athletes");
+const scoresCol = collection(db, "scores");
 
 const title = document.querySelector("#stream-title");
 const updated = document.querySelector("#stream-updated");
@@ -63,6 +29,10 @@ const performerClub = document.querySelector("#stream-performer-club");
 const performerScore = document.querySelector("#stream-performer-score");
 const scoreRows = document.querySelector("#stream-score-rows");
 
+let settings = { ...DEFAULT_SETTINGS };
+let athletes = [];
+let scores = [];
+let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
 let mixTimer = null;
 let mixPhase = "idle";
 let lastMixSeconds = null;
@@ -73,11 +43,21 @@ function setPanel(panel) {
   });
 }
 
-function renderScoreboard(data) {
+function toDate(value) {
+  if (!value) {
+    return new Date(0);
+  }
+  if (value.toDate) {
+    return value.toDate();
+  }
+  return new Date(value);
+}
+
+function renderScoreboard() {
   scoreRows.innerHTML = "";
-  const rows = data.scores
+  const rows = scores
     .map((score) => {
-      const athlete = data.athletes.find((entry) => entry.id === score.athleteId);
+      const athlete = athletes.find((entry) => entry.id === score.athleteId);
       return {
         ...score,
         athleteName: athlete ? athlete.name : "Unknown"
@@ -103,9 +83,9 @@ function renderScoreboard(data) {
   });
 }
 
-function renderSpotlight(data) {
-  const performerId = data.streamState?.performerId;
-  const athlete = data.athletes.find((entry) => entry.id === performerId);
+function renderSpotlight() {
+  const performerId = streamState.performerId;
+  const athlete = athletes.find((entry) => entry.id === performerId);
   if (!athlete) {
     performerName.textContent = "No performer selected";
     performerClub.textContent = "Club: --";
@@ -115,24 +95,25 @@ function renderSpotlight(data) {
 
   performerName.textContent = athlete.name;
   performerClub.textContent = `Club: ${athlete.club}`;
-  const latestScore = data.scores
+  const latestScore = scores
     .filter((score) => score.athleteId === athlete.id)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+    .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];
   performerScore.textContent = latestScore ? latestScore.total.toFixed(3) : "--";
 }
 
 function renderStream() {
-  const data = loadData();
-  normalizeData(data);
-  const mode = data.streamState?.mode || "idle";
-  const mixSeconds = data.streamState?.mixSeconds || 20;
-  const performerId = data.streamState?.performerId;
-  const performer = data.athletes.find((entry) => entry.id === performerId);
+  const mode = streamState.mode || "idle";
+  const mixSeconds = streamState.mixSeconds || 20;
+  const performer = athletes.find((entry) => entry.id === streamState.performerId);
   const categoryTag = performer?.categoryTags?.[0];
   const gradeTag = performer?.gradeTags?.[0];
 
-  if (data.lastUpdated) {
-    updated.textContent = `Updated ${new Date(data.lastUpdated).toLocaleTimeString()}`;
+  if (scores.length) {
+    const latest = scores.reduce((max, score) => {
+      const date = toDate(score.timestamp);
+      return date > max ? date : max;
+    }, new Date(0));
+    updated.textContent = `Updated ${latest.toLocaleTimeString()}`;
   } else {
     updated.textContent = "Awaiting scores";
   }
@@ -148,8 +129,8 @@ function renderStream() {
   }
 
   if (mode === "spotlight") {
-    const details = [categoryTag, gradeTag].filter(Boolean).join(" â€¢ ");
-    title.textContent = details ? `Current Performer â€” ${details}` : "Current Performer";
+    const details = [categoryTag, gradeTag].filter(Boolean).join(" • ");
+    title.textContent = details ? `Current Performer — ${details}` : "Current Performer";
   } else if (mode === "scoreboard") {
     title.textContent = "Scoreboard";
   } else if (mode === "mix") {
@@ -158,8 +139,8 @@ function renderStream() {
     title.textContent = "Break";
   }
 
-  renderSpotlight(data);
-  renderScoreboard(data);
+  renderSpotlight();
+  renderScoreboard();
 
   if (mode === "mix") {
     if (!mixTimer || lastMixSeconds !== mixSeconds) {
@@ -179,11 +160,24 @@ function renderStream() {
   }
 }
 
-window.addEventListener("storage", (event) => {
-  if (event.key === STORAGE_KEY) {
-    renderStream();
-  }
+onSnapshot(settingsRef, (snap) => {
+  settings = snap.exists() ? { ...DEFAULT_SETTINGS, ...snap.data() } : { ...DEFAULT_SETTINGS };
+  renderStream();
 });
 
-resetDemoDataOnce();
+onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
+  athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  renderStream();
+});
+
+onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
+  scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  renderStream();
+});
+
+onSnapshot(streamRef, (snap) => {
+  streamState = snap.exists() ? { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() } : { mode: "idle", performerId: null, mixSeconds: 20 };
+  renderStream();
+});
+
 renderStream();
