@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gymnastics Scores</title>
+        <link rel="stylesheet" href="css/styles.css?v=7">
+    </head>
+    <body>
+        <div class="page page-admin">
+            <header class="site-header">
+                <div class="container header-inner">
+                    <div>
+                        <p class="eyebrow">Admin Panel</p>
+                        <h1>Eclipse Invitational</h1>
+                    </div>
+                    <div class="header-actions">
+                        <p class="context-pill">Score Entry</p>
+                        <img class="logo-mark" src="img/eclipselogo.png" alt="Eclipse Invitational logo">
+                    </div>
+                </div>
+            </header>
+
+            <main class="container admin-layout">
+                <section class="card">
+                    <div class="scoreboard-header">
+                        <h2 class="section-title">Demo Controls</h2>
+                        <span class="badge">Quick reset</span>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="reset-demo" class="btn ghost">Reset Demo Data</button>
+                    </div>
+                </section>
+
+                <section class="card form-card">
+                    <h2 class="section-title">Enter Score</h2>
+                    <form id="score-form" class="form-grid">
+                        <label class="field">Category
+                            <select name="category" id="category"></select>
+                        </label>
+                        <label class="field">Athlete / Group
+                            <select name="athlete" id="athlete"></select>
+                        </label>
+                        <label class="field">Execution<input type="number" step="0.001" name="execution" id="execution"></label>
+                        <label class="field">Difficulty<input type="number" step="0.001" name="difficulty" id="difficulty"></label>
+                        <label class="field">Total<input type="number" step="0.001" name="total" id="total" readonly></label>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn primary">Save Score</button>
+                            <button type="reset" class="btn ghost">Clear</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="card">
+                    <div class="scoreboard-header">
+                        <h2 class="section-title">Manage Athletes / Groups</h2>
+                        <span class="badge">Local roster</span>
+                    </div>
+                    <form id="athlete-form" class="form-grid">
+                        <label class="field">Name / Group Name
+                            <input type="text" id="athlete-name" placeholder="e.g. Team Aurora A" required>
+                        </label>
+                        <label class="field">Club
+                            <input type="text" id="athlete-club" list="club-options" placeholder="e.g. Aurora" required>
+                            <datalist id="club-options"></datalist>
+                        </label>
+                        <label class="field">Group Type
+                            <select id="athlete-group">
+                                <option value="Individual">Individual</option>
+                                <option value="Group">Group</option>
+                            </select>
+                        </label>
+                        <div class="tag-grid">
+                            <div class="tag-group">
+                                <p class="tag-title">Category Tags</p>
+                                <div id="athlete-category-tags" class="tag-options"></div>
+                            </div>
+                            <div class="tag-group">
+                                <p class="tag-title">Grade Tags</p>
+                                <div id="athlete-grade-tags" class="tag-options"></div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn primary">Add Athlete/Group</button>
+                        </div>
+                    </form>
+                    <ul id="athlete-list" class="recent-list"></ul>
+                </section>
+
+                <section class="card">
+                    <div class="scoreboard-header">
+                        <h2 class="section-title">Stream Controls</h2>
+                        <span class="badge">Live broadcast mode</span>
+                    </div>
+                    <div class="form-grid">
+                        <label class="field">Current Performer
+                            <select id="stream-performer"></select>
+                        </label>
+                        <div class="form-actions">
+                            <button type="button" class="btn ghost" data-stream="idle">Idle / Break</button>
+                            <button type="button" class="btn ghost" data-stream="scoreboard">Scoreboard Only</button>
+                            <button type="button" class="btn ghost" data-stream="mix">Idle + Scoreboard Mix</button>
+                        </div>
+                        <p id="stream-status" class="footer-note">Mode: Idle</p>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <div class="scoreboard-header">
+                        <h2 class="section-title">Recent Entries</h2>
+                        <span class="badge">Local only</span>
+                    </div>
+                    <ul id="recent-list" class="recent-list"></ul>
+                </section>
+            </main>
+        </div>
+        <script src="js/admin.js?v=2"></script>
+    </body>
+</html> 

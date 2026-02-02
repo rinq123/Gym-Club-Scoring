@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gymnastics Scores</title>
+  <link rel="stylesheet" href="css/styles.css?v=7" />
+</head>
+<body>
+    <div class="page page-public">
+        <header class="site-header">
+            <div class="container header-inner">
+                <div>
+                    <p class="eyebrow">Live Scores</p>
+                    <h1>Eclipse Invitational Scoreboard</h1>
+                </div>
+                <div class="header-actions">
+                    <p id="current-context" class="context-pill">Floor - U14 Women</p>
+                    <img class="logo-mark" src="img/eclipselogo.png" alt="Eclipse Invitational logo">
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <section id="filters" class="card filters">
+                <h2 class="section-title">Filters</h2>
+                <div class="filter-grid">
+                    <label class="field">
+                        Category
+                        <select id="filter-category"></select>
+                    </label>
+
+                    <label class="field">
+                        Group Type
+                        <select id="filter-group"></select>
+                    </label>
+
+                    <label class="field">
+                        Club
+                        <select id="filter-club"></select>
+                    </label>
+                </div>
+            </section>
+
+            <section id="scoreboard" class="card scoreboard">
+                <div class="scoreboard-header">
+                    <h2 class="section-title">Current Rankings</h2>
+                    <span class="badge">Sorted by score</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="score-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Athlete</th>
+                                <th>Group</th>
+                                <th>Club</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="score-rows"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="container footer-inner">
+                <small id="last-updated">Last updated: </small>
+                <span class="footer-note">Unofficial live display</span>
+            </div>
+        </footer>
+    </div>
+    <script src="js/public.js?v=2"></script>
+</body>
+</html>

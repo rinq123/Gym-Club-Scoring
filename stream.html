@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gymnastics Stream</title>
+  <link rel="stylesheet" href="css/styles.css?v=8" />
+</head>
+<body class="display-body stream-body">
+  <div class="display stream">
+    <header class="display-header">
+      <div>
+        <p class="display-eyebrow">Eclipse Invitational</p>
+        <h1 id="stream-title">Live Stream</h1>
+      </div>
+      <div class="display-context">
+        <span class="live-pill">LIVE</span>
+        <span class="display-time" id="stream-updated">Awaiting scores</span>
+        <img class="logo-mark" src="img/eclipselogo.png" alt="Eclipse Invitational logo">
+      </div>
+    </header>
+
+    <main class="stream-main">
+      <section id="stream-idle" class="stream-panel stream-idle">
+        <p class="stream-idle-title">Eclipse Gymnastics Invitational</p>
+        <p class="stream-idle-subtitle">Live coverage will resume shortly</p>
+      </section>
+
+      <section id="stream-spotlight" class="stream-panel stream-spotlight">
+        <p class="stream-section-label">Current Performer</p>
+        <p id="stream-performer-name" class="stream-performer-name">No performer selected</p>
+        <p id="stream-performer-club" class="stream-performer-meta">Club: --</p>
+        <div class="stream-score">
+          <p class="stream-score-label">Score</p>
+          <p id="stream-performer-score" class="stream-score-value">--</p>
+        </div>
+      </section>
+
+      <section id="stream-scoreboard" class="stream-panel stream-scoreboard">
+        <div class="scoreboard-header">
+          <h2 class="section-title">Scoreboard</h2>
+          <span class="badge">All scores</span>
+        </div>
+        <div class="table-wrap">
+          <table class="score-table display-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="stream-score-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="js/stream.js?v=2"></script>
+</body>
+</html>
