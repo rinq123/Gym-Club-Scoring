@@ -42,6 +42,7 @@ const streamPerformer = document.querySelector("#stream-performer");
 const streamStatus = document.querySelector("#stream-status");
 const streamButtons = document.querySelectorAll("[data-stream]");
 const resetDemoBtn = document.querySelector("#reset-demo");
+const lockAdminBtn = document.querySelector("#lock-admin");
 const authGate = document.querySelector("#auth-gate");
 const pinForm = document.querySelector("#pin-form");
 const pinInput = document.querySelector("#pin-input");
@@ -377,6 +378,13 @@ resetDemoBtn.addEventListener("click", async () => {
   await batch.commit();
   await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
   await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
+});
+
+lockAdminBtn.addEventListener("click", () => {
+  sessionStorage.removeItem("adminPinOk");
+  pinInput.value = "";
+  pinError.classList.add("hidden");
+  lockUI();
 });
 
 athleteForm.addEventListener("submit", async (event) => {
