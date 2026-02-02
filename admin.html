@@ -7,6 +7,19 @@
         <link rel="stylesheet" href="css/styles.css?v=7">
     </head>
     <body>
+        <div id="auth-gate" class="auth-gate">
+            <div class="auth-card">
+                <img class="auth-logo" src="img/eclipselogo.png" alt="Eclipse Invitational logo">
+                <p class="auth-eyebrow">Admin Access</p>
+                <h2 class="auth-title">Enter PIN</h2>
+                <p class="auth-subtitle">Judges and admins only</p>
+                <form id="pin-form" class="auth-form">
+                    <input id="pin-input" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="••••" maxlength="6" required>
+                    <button type="submit" class="btn primary">Unlock</button>
+                </form>
+                <p id="pin-error" class="auth-error hidden">Incorrect PIN.</p>
+            </div>
+        </div>
         <div class="page page-admin">
             <header class="site-header">
                 <div class="container header-inner">
@@ -115,6 +128,6 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=3"></script>
+        <script type="module" src="js/admin.js?v=4"></script>
     </body>
 </html> 

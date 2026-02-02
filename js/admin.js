@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+import { db, auth } from "./firebase.js";
 import {
   collection,
   doc,
@@ -13,12 +13,14 @@ import {
   getDocs,
   writeBatch
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+import { signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
 const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"]
+  groupTypes: ["Individual", "Group"],
+  pinCodes: ["1234"]
 };
 
 const execInput = document.querySelector('[name="execution"]');
@@ -40,6 +42,10 @@ const streamPerformer = document.querySelector("#stream-performer");
 const streamStatus = document.querySelector("#stream-status");
 const streamButtons = document.querySelectorAll("[data-stream]");
 const resetDemoBtn = document.querySelector("#reset-demo");
+const authGate = document.querySelector("#auth-gate");
+const pinForm = document.querySelector("#pin-form");
+const pinInput = document.querySelector("#pin-input");
+const pinError = document.querySelector("#pin-error");
 
 const settingsRef = doc(db, "settings", "current");
 const streamRef = doc(db, "streamState", "current");
@@ -50,6 +56,7 @@ let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
 let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+let isUnlocked = false;
 
 function fillSelect(select, options) {
   select.innerHTML = "";
@@ -87,6 +94,20 @@ function renderClubOptions() {
     option.value = club;
     clubOptions.appendChild(option);
   });
+}
+
+function lockUI() {
+  document.body.classList.add("is-locked");
+  authGate.classList.remove("hidden");
+}
+
+function unlockUI() {
+  document.body.classList.remove("is-locked");
+  authGate.classList.add("hidden");
+}
+
+function validatePin(pin) {
+  return Array.isArray(settings.pinCodes) && settings.pinCodes.includes(pin);
 }
 
 function renderAthleteOptions() {
@@ -227,7 +248,9 @@ async function ensureSettings() {
     || !Array.isArray(data.grades)
     || data.grades.length === 0
     || !Array.isArray(data.groupTypes)
-    || data.groupTypes.length === 0;
+    || data.groupTypes.length === 0
+    || !Array.isArray(data.pinCodes)
+    || data.pinCodes.length === 0;
 
   if (needsUpdate) {
     await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
@@ -382,9 +405,33 @@ athleteForm.addEventListener("submit", async (event) => {
 
 categorySelect.addEventListener("change", renderAthleteOptions);
 
+pinForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const pin = pinInput.value.trim();
+  if (validatePin(pin)) {
+    sessionStorage.setItem("adminPinOk", "1");
+    pinError.classList.add("hidden");
+    isUnlocked = true;
+    unlockUI();
+  } else {
+    pinError.classList.remove("hidden");
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    signInAnonymously(auth).catch(() => {});
+  }
+});
+
 (async function init() {
+  lockUI();
   await ensureSettings();
   await ensureStreamState();
   updateTotal();
   subscribe();
+  if (sessionStorage.getItem("adminPinOk") === "1") {
+    isUnlocked = true;
+    unlockUI();
+  }
 })();
