@@ -57,6 +57,10 @@ p {
   user-select: none;
 }
 
+body.is-locked {
+  overflow: hidden;
+}
+
 .auth-gate {
   position: fixed;
   inset: 0;
@@ -64,6 +68,10 @@ p {
   place-items: center;
   background: rgba(5, 5, 10, 0.85);
   z-index: 9999;
+}
+
+#auth-gate.hidden {
+  display: none;
 }
 
 .auth-card {

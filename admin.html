@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=7">
+        <link rel="stylesheet" href="css/styles.css?v=9">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -14,7 +14,7 @@
                 <h2 class="auth-title">Enter PIN</h2>
                 <p class="auth-subtitle">Judges and admins only</p>
                 <form id="pin-form" class="auth-form">
-                    <input id="pin-input" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="••••" maxlength="6" required>
+                    <input id="pin-input" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="****" maxlength="6" required>
                     <button type="submit" class="btn primary">Unlock</button>
                 </form>
                 <p id="pin-error" class="auth-error hidden">Incorrect PIN.</p>
@@ -129,6 +129,6 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=5"></script>
+        <script type="module" src="js/admin.js?v=6"></script>
     </body>
 </html> 
