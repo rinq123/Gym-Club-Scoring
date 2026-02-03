@@ -8,22 +8,21 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 const DEFAULT_SETTINGS = {
-  competitionName: "Eclipse Invitational",
+  competitionName: "Eclipse Invitational 2026",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
   groupTypes: ["Individual", "Group"]
 };
 
 const settingsRef = doc(db, "settingsPublic", "current");
-const streamRef = doc(db, "streamState", "current");
-const athletesCol = collection(db, "athletes");
-const scoresCol = collection(db, "scores");
 
 const title = document.querySelector("#stream-title");
 const updated = document.querySelector("#stream-updated");
 const idlePanel = document.querySelector("#stream-idle");
 const spotlightPanel = document.querySelector("#stream-spotlight");
 const scoreboardPanel = document.querySelector("#stream-scoreboard");
+const streamEyebrow = document.querySelector("#stream-eyebrow");
+const streamIdleTitle = document.querySelector("#stream-idle-title");
 const performerName = document.querySelector("#stream-performer-name");
 const performerClub = document.querySelector("#stream-performer-club");
 const performerScore = document.querySelector("#stream-performer-score");
@@ -37,6 +36,10 @@ let mixTimer = null;
 let mixPhase = "idle";
 let lastMixSeconds = null;
 let scoreCache = new Map();
+let activeCompetitionId = null;
+let unsubAthletes = null;
+let unsubScores = null;
+let unsubStream = null;
 
 function setPanel(panel) {
   [idlePanel, spotlightPanel, scoreboardPanel].forEach((section) => {
@@ -171,23 +174,64 @@ function renderStream() {
   }
 }
 
+function bindCompetition(competitionId) {
+  if (!competitionId) {
+    athletes = [];
+    scores = [];
+    streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+    renderStream();
+    return;
+  }
+  if (unsubAthletes) {
+    unsubAthletes();
+  }
+  if (unsubScores) {
+    unsubScores();
+  }
+  if (unsubStream) {
+    unsubStream();
+  }
+  const athletesCol = collection(db, "competitions", competitionId, "athletes");
+  const scoresCol = collection(db, "competitions", competitionId, "scores");
+  const streamRef = doc(db, "competitions", competitionId, "streamState", "current");
+
+  unsubAthletes = onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
+    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderStream();
+  });
+
+  unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
+    scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderStream();
+  });
+
+  unsubStream = onSnapshot(streamRef, (snap) => {
+    streamState = snap.exists()
+      ? { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() }
+      : { mode: "idle", performerId: null, mixSeconds: 20 };
+    renderStream();
+  });
+}
+
 onSnapshot(settingsRef, (snap) => {
-  settings = snap.exists() ? { ...DEFAULT_SETTINGS, ...snap.data() } : { ...DEFAULT_SETTINGS };
-  renderStream();
-});
-
-onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
-  athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  renderStream();
-});
-
-onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
-  scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  renderStream();
-});
-
-onSnapshot(streamRef, (snap) => {
-  streamState = snap.exists() ? { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() } : { mode: "idle", performerId: null, mixSeconds: 20 };
+  if (!snap.exists()) {
+    settings = { ...DEFAULT_SETTINGS };
+    renderStream();
+    return;
+  }
+  const data = snap.data();
+  settings = { ...DEFAULT_SETTINGS, ...data };
+  const nextCompetitionId = data.activeCompetitionId || null;
+  if (nextCompetitionId && nextCompetitionId !== activeCompetitionId) {
+    activeCompetitionId = nextCompetitionId;
+    bindCompetition(activeCompetitionId);
+  }
+  if (streamEyebrow) {
+    streamEyebrow.textContent = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+  }
+  if (streamIdleTitle) {
+    streamIdleTitle.textContent = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+  }
   renderStream();
 });
 

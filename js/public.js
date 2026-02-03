@@ -8,15 +8,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 const DEFAULT_SETTINGS = {
-  competitionName: "Eclipse Invitational",
+  competitionName: "Eclipse Invitational 2026",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
   groupTypes: ["Individual", "Group"]
 };
 
 const settingsRef = doc(db, "settingsPublic", "current");
-const athletesCol = collection(db, "athletes");
-const scoresCol = collection(db, "scores");
 
 const filterCategory = document.querySelector("#filter-category");
 const filterGroup = document.querySelector("#filter-group");
@@ -25,11 +23,15 @@ const tbody = document.querySelector("#score-rows");
 const contextLabel = document.querySelector("#current-context");
 const lastUpdated = document.querySelector("#last-updated");
 const scoreboardCard = document.querySelector("#scoreboard");
+const publicTitle = document.querySelector("#public-title");
 
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
 let scoreCache = new Map();
+let activeCompetitionId = null;
+let unsubAthletes = null;
+let unsubScores = null;
 
 function fillSelect(select, options, selectedValue) {
   select.innerHTML = "";
@@ -49,6 +51,11 @@ function populateFilters() {
   fillSelect(filterGroup, ["All", ...settings.groupTypes], "All");
   const clubs = [...new Set(athletes.map((athlete) => athlete.club))];
   fillSelect(filterClub, ["All", ...clubs], "All");
+
+  if (publicTitle) {
+    const baseName = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+    publicTitle.textContent = `${baseName} Scoreboard`;
+  }
 }
 
 function buildContextLabel() {
@@ -156,21 +163,44 @@ onSnapshot(settingsRef, (snap) => {
     renderAll();
     return;
   }
-  settings = { ...DEFAULT_SETTINGS, ...snap.data() };
+  const data = snap.data();
+  settings = { ...DEFAULT_SETTINGS, ...data };
+  const nextCompetitionId = data.activeCompetitionId || null;
+  if (nextCompetitionId && nextCompetitionId !== activeCompetitionId) {
+    activeCompetitionId = nextCompetitionId;
+    bindCompetition(activeCompetitionId);
+  }
   populateFilters();
   renderAll();
 });
 
-onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
-  athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  populateFilters();
-  renderAll();
-});
+function bindCompetition(competitionId) {
+  if (!competitionId) {
+    athletes = [];
+    scores = [];
+    renderAll();
+    return;
+  }
+  if (unsubAthletes) {
+    unsubAthletes();
+  }
+  if (unsubScores) {
+    unsubScores();
+  }
+  const athletesCol = collection(db, "competitions", competitionId, "athletes");
+  const scoresCol = collection(db, "competitions", competitionId, "scores");
 
-onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
-  scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  renderAll();
-});
+  unsubAthletes = onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
+    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    populateFilters();
+    renderAll();
+  });
+
+  unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
+    scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderAll();
+  });
+}
 
 populateFilters();
 renderAll();

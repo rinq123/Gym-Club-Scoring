@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=13">
+        <link rel="stylesheet" href="css/styles.css?v=14">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -25,7 +25,7 @@
                 <div class="container header-inner">
                     <div>
                         <p class="eyebrow">Admin Panel</p>
-                        <h1>Eclipse Invitational</h1>
+                        <h1 id="admin-competition-title">Eclipse Invitational 2026</h1>
                     </div>
                     <div class="header-actions">
                         <p class="context-pill">Score Entry</p>
@@ -35,6 +35,27 @@
             </header>
 
             <main class="container admin-layout">
+                <section class="card">
+                    <div class="scoreboard-header">
+                        <h2 class="section-title">Competition Manager</h2>
+                        <span class="badge">Admin only</span>
+                    </div>
+                    <form class="form-grid">
+                        <label class="field">Active Competition
+                            <select id="competition-select"></select>
+                        </label>
+                        <label class="field">Competition Name
+                            <input type="text" id="competition-name" placeholder="e.g. Eclipse Invitational 2026">
+                        </label>
+                        <div class="form-actions">
+                            <button type="button" class="btn ghost" id="competition-activate">Set Active</button>
+                            <button type="button" class="btn ghost" id="competition-rename">Update Name</button>
+                            <button type="button" class="btn ghost" id="competition-create">Create New</button>
+                            <button type="button" class="btn ghost" id="competition-archive">Archive Current</button>
+                        </div>
+                        <p id="competition-status" class="footer-note">Active: --</p>
+                    </form>
+                </section>
                 <section class="card">
                     <div class="scoreboard-header">
                         <h2 class="section-title">Demo Controls</h2>
@@ -132,6 +153,6 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=12"></script>
+        <script type="module" src="js/admin.js?v=13"></script>
     </body>
 </html> 

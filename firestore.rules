@@ -34,6 +34,31 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /competitions/{competitionId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+
+      match /settings/{doc} {
+        allow read: if isAdmin();
+        allow write: if isAdmin();
+      }
+
+      match /athletes/{doc} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /scores/{doc} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /streamState/{doc} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

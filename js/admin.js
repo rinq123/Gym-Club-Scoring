@@ -16,7 +16,7 @@ import {
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
 const DEFAULT_SETTINGS = {
-  competitionName: "Eclipse Invitational",
+  competitionName: "Eclipse Invitational 2026",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
   groupTypes: ["Individual", "Group"]
@@ -57,12 +57,18 @@ const athleteSubmitBtn = document.querySelector("#athlete-submit");
 const athleteCancelBtn = document.querySelector("#athlete-cancel");
 const scoreEditingLabel = document.querySelector("#score-editing");
 const athleteEditingLabel = document.querySelector("#athlete-editing");
+const competitionSelect = document.querySelector("#competition-select");
+const competitionNameInput = document.querySelector("#competition-name");
+const competitionActivateBtn = document.querySelector("#competition-activate");
+const competitionRenameBtn = document.querySelector("#competition-rename");
+const competitionCreateBtn = document.querySelector("#competition-create");
+const competitionArchiveBtn = document.querySelector("#competition-archive");
+const competitionStatus = document.querySelector("#competition-status");
+const adminTitle = document.querySelector("#admin-competition-title");
 
 const settingsRef = doc(db, "settings", "current");
 const publicSettingsRef = doc(db, "settingsPublic", "current");
-const streamRef = doc(db, "streamState", "current");
-const athletesCol = collection(db, "athletes");
-const scoresCol = collection(db, "scores");
+const competitionsCol = collection(db, "competitions");
 
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
@@ -73,13 +79,22 @@ let editingScoreId = null;
 let editingScore = null;
 let lastPublicSettings = "";
 let subscriptionsStarted = false;
+let competitions = [];
+let activeCompetitionId = null;
+let activeCompetition = null;
+let activeSettingsRef = null;
+let activeStreamRef = null;
+let activeAthletesCol = null;
+let activeScoresCol = null;
+let activeUnsubscribers = [];
 
 function buildPublicSettings(nextSettings) {
   return {
     competitionName: nextSettings.competitionName,
     categories: nextSettings.categories,
     grades: nextSettings.grades,
-    groupTypes: nextSettings.groupTypes
+    groupTypes: nextSettings.groupTypes,
+    activeCompetitionId
   };
 }
 
@@ -91,6 +106,201 @@ async function syncPublicSettings(nextSettings) {
   }
   lastPublicSettings = serialized;
   await setDoc(publicSettingsRef, payload, { merge: true });
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getCompetitionRefs(id) {
+  return {
+    competitionRef: doc(db, "competitions", id),
+    settingsRef: doc(db, "competitions", id, "settings", "current"),
+    streamRef: doc(db, "competitions", id, "streamState", "current"),
+    athletesCol: collection(db, "competitions", id, "athletes"),
+    scoresCol: collection(db, "competitions", id, "scores")
+  };
+}
+
+function setActiveRefs(id) {
+  const refs = getCompetitionRefs(id);
+  activeSettingsRef = refs.settingsRef;
+  activeStreamRef = refs.streamRef;
+  activeAthletesCol = refs.athletesCol;
+  activeScoresCol = refs.scoresCol;
+}
+
+function clearActiveSubscriptions() {
+  activeUnsubscribers.forEach((unsubscribe) => unsubscribe());
+  activeUnsubscribers = [];
+}
+
+function renderCompetitionSelect() {
+  competitionSelect.innerHTML = "";
+  competitions.forEach((competition) => {
+    const option = document.createElement("option");
+    option.value = competition.id;
+    option.textContent = competition.archived ? `${competition.name} (Archived)` : competition.name;
+    competitionSelect.appendChild(option);
+  });
+  if (activeCompetitionId) {
+    competitionSelect.value = activeCompetitionId;
+  }
+  const selected = competitions.find((entry) => entry.id === competitionSelect.value);
+  const active = competitions.find((entry) => entry.id === activeCompetitionId);
+  competitionNameInput.value = selected ? selected.name : DEFAULT_SETTINGS.competitionName;
+  competitionStatus.textContent = active ? `Active: ${active.name}` : "Active: --";
+  adminTitle.textContent = active ? active.name : DEFAULT_SETTINGS.competitionName;
+  activeCompetition = active || null;
+}
+
+async function setActiveCompetition(id) {
+  if (!id || id === activeCompetitionId) {
+    return;
+  }
+  activeCompetitionId = id;
+  await setDoc(settingsRef, { activeCompetitionId: id }, { merge: true });
+}
+
+async function createCompetition(name, { setActive = true } = {}) {
+  const trimmedName = name?.trim() || DEFAULT_SETTINGS.competitionName;
+  const base = slugify(trimmedName) || "competition";
+  let id = base;
+  let counter = 1;
+  while (true) {
+    const existing = competitions.find((entry) => entry.id === id);
+    if (!existing) {
+      const checkSnap = await getDoc(doc(db, "competitions", id));
+      if (!checkSnap.exists()) {
+        break;
+      }
+    }
+    id = `${base}-${counter}`;
+    counter += 1;
+  }
+  const refs = getCompetitionRefs(id);
+  await setDoc(refs.competitionRef, {
+    name: trimmedName,
+    archived: false,
+    createdAt: serverTimestamp()
+  });
+  await setDoc(refs.settingsRef, {
+    ...DEFAULT_SETTINGS,
+    competitionName: trimmedName
+  }, { merge: true });
+  await setDoc(refs.streamRef, {
+    mode: "idle",
+    performerId: null,
+    mixSeconds: 20,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  if (setActive) {
+    await setActiveCompetition(id);
+  }
+
+  return id;
+}
+
+async function migrateRootData(targetId) {
+  const refs = getCompetitionRefs(targetId);
+  const rootSettingsSnap = await getDoc(settingsRef);
+  const rootSettings = rootSettingsSnap.exists() ? rootSettingsSnap.data() : {};
+  const { pinCodes, activeCompetitionId: ignoredActive, ...restSettings } = rootSettings;
+  const competitionName = DEFAULT_SETTINGS.competitionName;
+
+  await setDoc(refs.settingsRef, {
+    ...DEFAULT_SETTINGS,
+    ...restSettings,
+    competitionName
+  }, { merge: true });
+
+  const rootAthletesSnap = await getDocs(collection(db, "athletes"));
+  const rootScoresSnap = await getDocs(collection(db, "scores"));
+  const rootStreamSnap = await getDoc(doc(db, "streamState", "current"));
+
+  for (const docSnap of rootAthletesSnap.docs) {
+    await setDoc(doc(refs.athletesCol, docSnap.id), docSnap.data(), { merge: true });
+  }
+  for (const docSnap of rootScoresSnap.docs) {
+    await setDoc(doc(refs.scoresCol, docSnap.id), docSnap.data(), { merge: true });
+  }
+  if (rootStreamSnap.exists()) {
+    await setDoc(refs.streamRef, rootStreamSnap.data(), { merge: true });
+  }
+}
+
+async function ensureCompetitionSetup() {
+  const settingsSnap = await getDoc(settingsRef);
+  const settingsData = settingsSnap.exists() ? settingsSnap.data() : {};
+  activeCompetitionId = settingsData.activeCompetitionId || null;
+
+  const competitionsSnap = await getDocs(competitionsCol);
+  if (competitionsSnap.empty) {
+    const id = await createCompetition(settingsData.competitionName || DEFAULT_SETTINGS.competitionName, { setActive: true });
+    await migrateRootData(id);
+    return;
+  }
+
+  if (!activeCompetitionId) {
+    const first = competitionsSnap.docs[0];
+    await setActiveCompetition(first.id);
+  }
+}
+
+function bindActiveCompetition(id) {
+  if (!id) {
+    return;
+  }
+  setActiveRefs(id);
+  clearActiveSubscriptions();
+
+  activeUnsubscribers.push(onSnapshot(activeSettingsRef, (snap) => {
+    if (!snap.exists()) {
+      settings = { ...DEFAULT_SETTINGS };
+      fillSelect(categorySelect, settings.categories);
+      renderTagOptions(categoryTagsContainer, settings.categories);
+      renderTagOptions(gradeTagsContainer, settings.grades);
+      syncPublicSettings(settings);
+      return;
+    }
+    settings = { ...DEFAULT_SETTINGS, ...snap.data() };
+    fillSelect(categorySelect, settings.categories);
+    renderTagOptions(categoryTagsContainer, settings.categories);
+    renderTagOptions(gradeTagsContainer, settings.grades);
+    renderAthleteOptions();
+    syncPublicSettings(settings);
+    adminTitle.textContent = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+    competitionNameInput.value = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+  }));
+
+  activeUnsubscribers.push(onSnapshot(query(activeAthletesCol, orderBy("name")), (snap) => {
+    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderClubOptions();
+    renderAthleteOptions();
+    renderAthleteList();
+    renderStreamPerformerOptions();
+  }));
+
+  activeUnsubscribers.push(onSnapshot(query(activeScoresCol, orderBy("timestamp", "desc")), (snap) => {
+    scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderRecent();
+  }));
+
+  activeUnsubscribers.push(onSnapshot(activeStreamRef, (snap) => {
+    if (!snap.exists()) {
+      streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+      updateStreamStatus();
+      return;
+    }
+    streamState = { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() };
+    updateStreamStatus();
+    renderStreamPerformerOptions();
+  }));
 }
 
 function fillSelect(select, options) {
@@ -215,8 +425,8 @@ function renderAthleteList() {
     removeBtn.className = "btn ghost btn-small";
     removeBtn.textContent = "Delete";
     removeBtn.addEventListener("click", async () => {
-      await deleteDoc(doc(db, "athletes", athlete.id));
-      const scoreQuery = query(scoresCol);
+      await deleteDoc(doc(activeAthletesCol, athlete.id));
+      const scoreQuery = query(activeScoresCol);
       const snapshot = await getDocs(scoreQuery);
       const batch = writeBatch(db);
       snapshot.forEach((docSnap) => {
@@ -226,7 +436,7 @@ function renderAthleteList() {
       });
       await batch.commit();
       if (streamState.performerId === athlete.id) {
-        await setDoc(streamRef, { performerId: null, mode: "idle", updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(activeStreamRef, { performerId: null, mode: "idle", updatedAt: serverTimestamp() }, { merge: true });
       }
     });
     actions.append(editBtn, removeBtn);
@@ -272,7 +482,7 @@ function renderRecent() {
     removeBtn.className = "btn ghost btn-small";
     removeBtn.textContent = "Delete";
     removeBtn.addEventListener("click", async () => {
-      await deleteDoc(doc(db, "scores", score.id));
+      await deleteDoc(doc(activeScoresCol, score.id));
     });
     actions.append(editBtn, removeBtn);
     item.append(text, actions);
@@ -347,35 +557,6 @@ function updateStreamStatus() {
   });
 }
 
-async function ensureSettings() {
-  const snap = await getDoc(settingsRef);
-  if (!snap.exists()) {
-    await setDoc(settingsRef, DEFAULT_SETTINGS);
-    await setDoc(publicSettingsRef, buildPublicSettings(DEFAULT_SETTINGS), { merge: true });
-    return;
-  }
-  const data = snap.data();
-  const needsUpdate = !Array.isArray(data.categories)
-    || data.categories.length === 0
-    || data.categories.some((c) => c.toLowerCase().includes("women"))
-    || !Array.isArray(data.grades)
-    || data.grades.length === 0
-    || !Array.isArray(data.groupTypes)
-    || data.groupTypes.length === 0;
-
-  if (needsUpdate) {
-    await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
-    await setDoc(publicSettingsRef, buildPublicSettings(DEFAULT_SETTINGS), { merge: true });
-  }
-}
-
-async function ensureStreamState() {
-  const snap = await getDoc(streamRef);
-  if (!snap.exists()) {
-    await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
-  }
-}
-
 function toDate(value) {
   if (!value) {
     return new Date(0);
@@ -386,54 +567,14 @@ function toDate(value) {
   return new Date(value);
 }
 
-function subscribe() {
-  onSnapshot(settingsRef, (snap) => {
-    if (!snap.exists()) {
-      settings = { ...DEFAULT_SETTINGS };
-      fillSelect(categorySelect, settings.categories);
-      renderTagOptions(categoryTagsContainer, settings.categories);
-      renderTagOptions(gradeTagsContainer, settings.grades);
-      syncPublicSettings(settings);
-      return;
-    }
-    settings = { ...DEFAULT_SETTINGS, ...snap.data() };
-    fillSelect(categorySelect, settings.categories);
-    renderTagOptions(categoryTagsContainer, settings.categories);
-    renderTagOptions(gradeTagsContainer, settings.grades);
-    renderAthleteOptions();
-    syncPublicSettings(settings);
-  });
-
-  onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
-    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    renderClubOptions();
-    renderAthleteOptions();
-    renderAthleteList();
-    renderStreamPerformerOptions();
-  });
-
-  onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
-    scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    renderRecent();
-  });
-
-  onSnapshot(streamRef, (snap) => {
-    if (!snap.exists()) {
-      streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
-      updateStreamStatus();
-      return;
-    }
-    streamState = { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() };
-    updateStreamStatus();
-    renderStreamPerformerOptions();
-  });
-}
-
 execInput.addEventListener("input", updateTotal);
 diffInput.addEventListener("input", updateTotal);
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!activeScoresCol) {
+    return;
+  }
   const execution = parseFloat(execInput.value);
   const difficulty = parseFloat(diffInput.value);
   const category = categorySelect.value;
@@ -448,7 +589,7 @@ form.addEventListener("submit", async (event) => {
   const grade = athlete?.gradeTags?.length === 1 ? athlete.gradeTags[0] : null;
 
   if (editingScoreId) {
-    await setDoc(doc(db, "scores", editingScoreId), {
+    await setDoc(doc(activeScoresCol, editingScoreId), {
       athleteId,
       category,
       grade,
@@ -461,7 +602,7 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  await addDoc(scoresCol, {
+  await addDoc(activeScoresCol, {
     athleteId,
     category,
     grade,
@@ -485,16 +626,22 @@ form.addEventListener("reset", (event) => {
 });
 
 streamPerformer.addEventListener("change", async () => {
+  if (!activeStreamRef) {
+    return;
+  }
   const performerId = streamPerformer.value || null;
   const mode = performerId ? "spotlight" : "idle";
-  await setDoc(streamRef, { performerId, mode, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(activeStreamRef, { performerId, mode, updatedAt: serverTimestamp() }, { merge: true });
 });
 
 streamButtons.forEach((button) => {
   button.addEventListener("click", async () => {
+    if (!activeStreamRef) {
+      return;
+    }
     const mode = button.dataset.stream;
     const performerId = mode === "spotlight" ? streamState.performerId : null;
-    await setDoc(streamRef, { mode, performerId, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(activeStreamRef, { mode, performerId, updatedAt: serverTimestamp() }, { merge: true });
   });
 });
 
@@ -502,17 +649,62 @@ resetDemoBtn.addEventListener("click", async () => {
   if (!window.confirm("Reset all demo data? This clears scores and roster changes.")) {
     return;
   }
-  const athleteSnap = await getDocs(athletesCol);
-  const scoreSnap = await getDocs(scoresCol);
+  if (!activeCompetitionId || !activeAthletesCol || !activeScoresCol || !activeStreamRef) {
+    return;
+  }
+  const athleteSnap = await getDocs(activeAthletesCol);
+  const scoreSnap = await getDocs(activeScoresCol);
   const batch = writeBatch(db);
   athleteSnap.forEach((docSnap) => batch.delete(docSnap.ref));
   scoreSnap.forEach((docSnap) => batch.delete(docSnap.ref));
   await batch.commit();
-  await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
-  await setDoc(publicSettingsRef, buildPublicSettings(DEFAULT_SETTINGS), { merge: true });
-  await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
+  await setDoc(activeSettingsRef, { ...DEFAULT_SETTINGS, competitionName: settings.competitionName }, { merge: true });
+  await syncPublicSettings({ ...DEFAULT_SETTINGS, competitionName: settings.competitionName });
+  await setDoc(activeStreamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
   clearScoreEdit();
   clearAthleteEdit();
+});
+
+competitionSelect.addEventListener("change", () => {
+  const selected = competitions.find((entry) => entry.id === competitionSelect.value);
+  competitionNameInput.value = selected ? selected.name : DEFAULT_SETTINGS.competitionName;
+});
+
+competitionActivateBtn.addEventListener("click", async () => {
+  const selectedId = competitionSelect.value;
+  if (!selectedId) {
+    return;
+  }
+  await setActiveCompetition(selectedId);
+});
+
+competitionRenameBtn.addEventListener("click", async () => {
+  const selectedId = competitionSelect.value;
+  const newName = competitionNameInput.value.trim();
+  if (!selectedId || !newName) {
+    return;
+  }
+  await setDoc(doc(db, "competitions", selectedId), { name: newName }, { merge: true });
+  await setDoc(doc(db, "competitions", selectedId, "settings", "current"), { competitionName: newName }, { merge: true });
+  if (selectedId === activeCompetitionId) {
+    settings = { ...settings, competitionName: newName };
+    adminTitle.textContent = newName;
+    await syncPublicSettings(settings);
+  }
+});
+
+competitionCreateBtn.addEventListener("click", async () => {
+  const name = competitionNameInput.value.trim() || DEFAULT_SETTINGS.competitionName;
+  await createCompetition(name, { setActive: true });
+});
+
+competitionArchiveBtn.addEventListener("click", async () => {
+  if (!activeCompetitionId) {
+    return;
+  }
+  const name = competitionNameInput.value.trim() || DEFAULT_SETTINGS.competitionName;
+  await setDoc(doc(db, "competitions", activeCompetitionId), { archived: true }, { merge: true });
+  await createCompetition(name, { setActive: true });
 });
 
 lockAdminBtn.addEventListener("click", () => {
@@ -525,6 +717,9 @@ lockAdminBtn.addEventListener("click", () => {
 
 athleteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!activeAthletesCol) {
+    return;
+  }
   const name = athleteNameInput.value.trim();
   const club = athleteClubInput.value.trim();
   const groupType = athleteGroupSelect.value;
@@ -536,7 +731,7 @@ athleteForm.addEventListener("submit", async (event) => {
   }
 
   if (editingAthleteId) {
-    await setDoc(doc(db, "athletes", editingAthleteId), {
+    await setDoc(doc(activeAthletesCol, editingAthleteId), {
       name,
       club,
       groupType,
@@ -548,7 +743,7 @@ athleteForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  await addDoc(athletesCol, {
+  await addDoc(activeAthletesCol, {
     name,
     club,
     groupType,
@@ -593,10 +788,26 @@ async function startAdminSession() {
     return;
   }
   subscriptionsStarted = true;
-  await ensureSettings();
-  await ensureStreamState();
   updateTotal();
-  subscribe();
+  await ensureCompetitionSetup();
+  if (activeCompetitionId) {
+    bindActiveCompetition(activeCompetitionId);
+  }
+
+  onSnapshot(query(competitionsCol, orderBy("createdAt", "desc")), (snap) => {
+    competitions = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderCompetitionSelect();
+  });
+
+  onSnapshot(settingsRef, (snap) => {
+    const data = snap.exists() ? snap.data() : {};
+    const nextActive = data.activeCompetitionId || activeCompetitionId;
+    if (nextActive && nextActive !== activeCompetitionId) {
+      activeCompetitionId = nextActive;
+      bindActiveCompetition(activeCompetitionId);
+      renderCompetitionSelect();
+    }
+  });
 }
 
 onAuthStateChanged(auth, (user) => {
