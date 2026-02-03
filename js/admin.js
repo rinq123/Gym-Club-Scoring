@@ -72,6 +72,7 @@ let editingAthleteId = null;
 let editingScoreId = null;
 let editingScore = null;
 let lastPublicSettings = "";
+let subscriptionsStarted = false;
 
 function buildPublicSettings(nextSettings) {
   return {
@@ -587,17 +588,24 @@ pinForm.addEventListener("submit", (event) => {
   })();
 });
 
+async function startAdminSession() {
+  if (subscriptionsStarted) {
+    return;
+  }
+  subscriptionsStarted = true;
+  await ensureSettings();
+  await ensureStreamState();
+  updateTotal();
+  subscribe();
+}
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
     unlockUI();
+    startAdminSession();
     return;
   }
   lockUI();
 });
 
-(async function init() {
-  await ensureSettings();
-  await ensureStreamState();
-  updateTotal();
-  subscribe();
-})();
+updateTotal();
