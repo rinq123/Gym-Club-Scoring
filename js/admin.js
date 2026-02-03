@@ -75,6 +75,7 @@ let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
 const DEFAULT_STREAM_STATE = { mode: "welcome", performerId: null, mixSeconds: 20 };
+let streamState = { ...DEFAULT_STREAM_STATE };
 let editingAthleteId = null;
 let editingScoreId = null;
 let editingScore = null;
