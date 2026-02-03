@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
   groupTypes: ["Individual", "Group"]
 };
 
-const settingsRef = doc(db, "settings", "current");
+const settingsRef = doc(db, "settingsPublic", "current");
 const athletesCol = collection(db, "athletes");
 const scoresCol = collection(db, "scores");
 
@@ -29,6 +29,7 @@ const scoreboardCard = document.querySelector("#scoreboard");
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
+let scoreCache = new Map();
 
 function fillSelect(select, options, selectedValue) {
   select.innerHTML = "";
@@ -88,11 +89,20 @@ function renderScores() {
     const row = document.createElement("tr");
     row.innerHTML = `<td colspan="5">No scores yet for this view.</td>`;
     tbody.appendChild(row);
+    scoreCache = new Map();
     return;
   }
 
+  const nextCache = new Map();
   filteredScores.forEach((score, index) => {
     const row = document.createElement("tr");
+    const cachedTotal = scoreCache.get(score.id);
+    if (cachedTotal === undefined || cachedTotal !== score.total) {
+      row.classList.add("is-updated");
+      setTimeout(() => {
+        row.classList.remove("is-updated");
+      }, 2000);
+    }
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${score.athleteName}</td>
@@ -101,7 +111,9 @@ function renderScores() {
       <td>${score.total.toFixed(3)}</td>
     `;
     tbody.appendChild(row);
+    nextCache.set(score.id, score.total);
   });
+  scoreCache = nextCache;
 
   const rowCount = filteredScores.length;
   let scale = 1;

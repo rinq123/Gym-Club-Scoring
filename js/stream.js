@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+ï»¿import { db } from "./firebase.js";
 import {
   collection,
   doc,
@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
   groupTypes: ["Individual", "Group"]
 };
 
-const settingsRef = doc(db, "settings", "current");
+const settingsRef = doc(db, "settingsPublic", "current");
 const streamRef = doc(db, "streamState", "current");
 const athletesCol = collection(db, "athletes");
 const scoresCol = collection(db, "scores");
@@ -36,6 +36,7 @@ let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
 let mixTimer = null;
 let mixPhase = "idle";
 let lastMixSeconds = null;
+let scoreCache = new Map();
 
 function setPanel(panel) {
   [idlePanel, spotlightPanel, scoreboardPanel].forEach((section) => {
@@ -69,20 +70,30 @@ function renderScoreboard() {
     const row = document.createElement("tr");
     row.innerHTML = `<td colspan="3">No scores yet.</td>`;
     scoreRows.appendChild(row);
+    scoreCache = new Map();
     return;
   }
 
+  const nextCache = new Map();
   rows.forEach((score, index) => {
     const row = document.createElement("tr");
+    const cachedTotal = scoreCache.get(score.id);
+    if (cachedTotal === undefined || cachedTotal !== score.total) {
+      row.classList.add("is-updated");
+      setTimeout(() => {
+        row.classList.remove("is-updated");
+      }, 2000);
+    }
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${score.athleteName}</td>
       <td>${score.total.toFixed(3)}</td>
     `;
     scoreRows.appendChild(row);
+    nextCache.set(score.id, score.total);
   });
+  scoreCache = nextCache;
 }
-
 function renderSpotlight() {
   const performerId = streamState.performerId;
   const athlete = athletes.find((entry) => entry.id === performerId);
@@ -129,8 +140,8 @@ function renderStream() {
   }
 
   if (mode === "spotlight") {
-    const details = [categoryTag, gradeTag].filter(Boolean).join(" • ");
-    title.textContent = details ? `Current Performer — ${details}` : "Current Performer";
+    const details = [categoryTag, gradeTag].filter(Boolean).join(" â€¢ ");
+    title.textContent = details ? `Current Performer â€” ${details}` : "Current Performer";
   } else if (mode === "scoreboard") {
     title.textContent = "Scoreboard";
   } else if (mode === "mix") {
@@ -181,3 +192,4 @@ onSnapshot(streamRef, (snap) => {
 });
 
 renderStream();
+

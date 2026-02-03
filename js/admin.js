@@ -59,6 +59,7 @@ const scoreEditingLabel = document.querySelector("#score-editing");
 const athleteEditingLabel = document.querySelector("#athlete-editing");
 
 const settingsRef = doc(db, "settings", "current");
+const publicSettingsRef = doc(db, "settingsPublic", "current");
 const streamRef = doc(db, "streamState", "current");
 const athletesCol = collection(db, "athletes");
 const scoresCol = collection(db, "scores");
@@ -70,6 +71,26 @@ let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
 let editingAthleteId = null;
 let editingScoreId = null;
 let editingScore = null;
+let lastPublicSettings = "";
+
+function buildPublicSettings(nextSettings) {
+  return {
+    competitionName: nextSettings.competitionName,
+    categories: nextSettings.categories,
+    grades: nextSettings.grades,
+    groupTypes: nextSettings.groupTypes
+  };
+}
+
+async function syncPublicSettings(nextSettings) {
+  const payload = buildPublicSettings(nextSettings);
+  const serialized = JSON.stringify(payload);
+  if (serialized === lastPublicSettings) {
+    return;
+  }
+  lastPublicSettings = serialized;
+  await setDoc(publicSettingsRef, payload, { merge: true });
+}
 
 function fillSelect(select, options) {
   select.innerHTML = "";
@@ -329,6 +350,7 @@ async function ensureSettings() {
   const snap = await getDoc(settingsRef);
   if (!snap.exists()) {
     await setDoc(settingsRef, DEFAULT_SETTINGS);
+    await setDoc(publicSettingsRef, buildPublicSettings(DEFAULT_SETTINGS), { merge: true });
     return;
   }
   const data = snap.data();
@@ -342,6 +364,7 @@ async function ensureSettings() {
 
   if (needsUpdate) {
     await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
+    await setDoc(publicSettingsRef, buildPublicSettings(DEFAULT_SETTINGS), { merge: true });
   }
 }
 
@@ -369,6 +392,7 @@ function subscribe() {
       fillSelect(categorySelect, settings.categories);
       renderTagOptions(categoryTagsContainer, settings.categories);
       renderTagOptions(gradeTagsContainer, settings.grades);
+      syncPublicSettings(settings);
       return;
     }
     settings = { ...DEFAULT_SETTINGS, ...snap.data() };
@@ -376,6 +400,7 @@ function subscribe() {
     renderTagOptions(categoryTagsContainer, settings.categories);
     renderTagOptions(gradeTagsContainer, settings.grades);
     renderAthleteOptions();
+    syncPublicSettings(settings);
   });
 
   onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
@@ -483,6 +508,7 @@ resetDemoBtn.addEventListener("click", async () => {
   scoreSnap.forEach((docSnap) => batch.delete(docSnap.ref));
   await batch.commit();
   await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
+  await setDoc(publicSettingsRef, buildPublicSettings(DEFAULT_SETTINGS), { merge: true });
   await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
   clearScoreEdit();
   clearAthleteEdit();
