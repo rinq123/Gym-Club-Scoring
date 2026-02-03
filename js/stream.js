@@ -27,6 +27,7 @@ const performerName = document.querySelector("#stream-performer-name");
 const performerClub = document.querySelector("#stream-performer-club");
 const performerScore = document.querySelector("#stream-performer-score");
 const scoreRows = document.querySelector("#stream-score-rows");
+const scoreboardWrap = scoreboardPanel ? scoreboardPanel.querySelector(".table-wrap") : null;
 
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
@@ -174,6 +175,17 @@ function renderStream() {
   }
 }
 
+function triggerUpdating() {
+  if (!scoreboardWrap) {
+    return;
+  }
+  scoreboardWrap.classList.add("is-updating");
+  clearTimeout(triggerUpdating.timer);
+  triggerUpdating.timer = setTimeout(() => {
+    scoreboardWrap.classList.remove("is-updating");
+  }, 900);
+}
+
 function bindCompetition(competitionId) {
   if (!competitionId) {
     athletes = [];
@@ -202,6 +214,7 @@ function bindCompetition(competitionId) {
 
   unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    triggerUpdating();
     renderStream();
   });
 

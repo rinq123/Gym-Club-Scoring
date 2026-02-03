@@ -63,6 +63,7 @@ const competitionActivateBtn = document.querySelector("#competition-activate");
 const competitionRenameBtn = document.querySelector("#competition-rename");
 const competitionCreateBtn = document.querySelector("#competition-create");
 const competitionArchiveBtn = document.querySelector("#competition-archive");
+const competitionDeleteBtn = document.querySelector("#competition-delete");
 const competitionStatus = document.querySelector("#competition-status");
 const adminTitle = document.querySelector("#admin-competition-title");
 
@@ -204,6 +205,36 @@ async function createCompetition(name, { setActive = true } = {}) {
   }
 
   return id;
+}
+
+async function deleteCollectionDocs(colRef) {
+  const snapshot = await getDocs(colRef);
+  if (snapshot.empty) {
+    return;
+  }
+  let batch = writeBatch(db);
+  let count = 0;
+  for (const docSnap of snapshot.docs) {
+    batch.delete(docSnap.ref);
+    count += 1;
+    if (count >= 450) {
+      await batch.commit();
+      batch = writeBatch(db);
+      count = 0;
+    }
+  }
+  if (count > 0) {
+    await batch.commit();
+  }
+}
+
+async function deleteCompetition(id) {
+  const refs = getCompetitionRefs(id);
+  await deleteCollectionDocs(refs.athletesCol);
+  await deleteCollectionDocs(refs.scoresCol);
+  await deleteDoc(refs.settingsRef);
+  await deleteDoc(refs.streamRef);
+  await deleteDoc(refs.competitionRef);
 }
 
 async function migrateRootData(targetId) {
@@ -652,12 +683,8 @@ resetDemoBtn.addEventListener("click", async () => {
   if (!activeCompetitionId || !activeAthletesCol || !activeScoresCol || !activeStreamRef) {
     return;
   }
-  const athleteSnap = await getDocs(activeAthletesCol);
-  const scoreSnap = await getDocs(activeScoresCol);
-  const batch = writeBatch(db);
-  athleteSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-  scoreSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-  await batch.commit();
+  await deleteCollectionDocs(activeAthletesCol);
+  await deleteCollectionDocs(activeScoresCol);
   await setDoc(activeSettingsRef, { ...DEFAULT_SETTINGS, competitionName: settings.competitionName }, { merge: true });
   await syncPublicSettings({ ...DEFAULT_SETTINGS, competitionName: settings.competitionName });
   await setDoc(activeStreamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
@@ -705,6 +732,22 @@ competitionArchiveBtn.addEventListener("click", async () => {
   const name = competitionNameInput.value.trim() || DEFAULT_SETTINGS.competitionName;
   await setDoc(doc(db, "competitions", activeCompetitionId), { archived: true }, { merge: true });
   await createCompetition(name, { setActive: true });
+});
+
+competitionDeleteBtn.addEventListener("click", async () => {
+  const selectedId = competitionSelect.value;
+  const selected = competitions.find((entry) => entry.id === selectedId);
+  if (!selectedId || !selected) {
+    return;
+  }
+  if (selectedId === activeCompetitionId) {
+    window.alert("Please switch to another competition before deleting the active one.");
+    return;
+  }
+  if (!window.confirm(`Delete competition "${selected.name}"? This cannot be undone.`)) {
+    return;
+  }
+  await deleteCompetition(selectedId);
 });
 
 lockAdminBtn.addEventListener("click", () => {

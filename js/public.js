@@ -24,6 +24,7 @@ const contextLabel = document.querySelector("#current-context");
 const lastUpdated = document.querySelector("#last-updated");
 const scoreboardCard = document.querySelector("#scoreboard");
 const publicTitle = document.querySelector("#public-title");
+const scoreboardWrap = scoreboardCard ? scoreboardCard.querySelector(".table-wrap") : null;
 
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
@@ -134,6 +135,17 @@ function renderScores() {
   scoreboardCard.style.setProperty("--table-scale", scale.toString());
 }
 
+function triggerUpdating() {
+  if (!scoreboardWrap) {
+    return;
+  }
+  scoreboardWrap.classList.add("is-updating");
+  clearTimeout(triggerUpdating.timer);
+  triggerUpdating.timer = setTimeout(() => {
+    scoreboardWrap.classList.remove("is-updating");
+  }, 900);
+}
+
 function updateLastUpdated() {
   if (!scores.length) {
     lastUpdated.textContent = "Last updated: --";
@@ -198,6 +210,7 @@ function bindCompetition(competitionId) {
 
   unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    triggerUpdating();
     renderAll();
   });
 }

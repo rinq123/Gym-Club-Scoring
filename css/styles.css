@@ -260,6 +260,32 @@ label select:focus {
   overflow-x: auto;
 }
 
+.table-wrap.is-updating {
+  position: relative;
+}
+
+.table-wrap.is-updating::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  animation: shimmer 1.1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.table-wrap.is-updating .score-table {
+  opacity: 0.7;
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
