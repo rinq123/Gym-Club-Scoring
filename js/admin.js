@@ -166,6 +166,13 @@ async function setActiveCompetition(id) {
   activeCompetitionId = id;
   bindActiveCompetition(id);
   renderCompetitionSelect();
+  if (activeSettingsRef) {
+    const snap = await getDoc(activeSettingsRef);
+    if (snap.exists()) {
+      settings = { ...DEFAULT_SETTINGS, ...snap.data() };
+      await syncPublicSettings(settings);
+    }
+  }
   await setDoc(settingsRef, { activeCompetitionId: id }, { merge: true });
 }
 
@@ -664,6 +671,8 @@ streamPerformer.addEventListener("change", async () => {
   }
   const performerId = streamPerformer.value || null;
   const mode = performerId ? "spotlight" : "idle";
+  streamState = { ...streamState, performerId, mode };
+  updateStreamStatus();
   await setDoc(activeStreamRef, { performerId, mode, updatedAt: serverTimestamp() }, { merge: true });
 });
 
@@ -674,6 +683,8 @@ streamButtons.forEach((button) => {
     }
     const mode = button.dataset.stream;
     const performerId = mode === "spotlight" ? streamState.performerId : null;
+    streamState = { ...streamState, mode, performerId };
+    updateStreamStatus();
     await setDoc(activeStreamRef, { mode, performerId, updatedAt: serverTimestamp() }, { merge: true });
   });
 });
