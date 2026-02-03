@@ -22,7 +22,10 @@ const DEFAULT_SETTINGS = {
   groupTypes: ["Individual", "Group"]
 };
 
-const ADMIN_EMAIL = "admin@eclipse.local";
+const ADMIN_EMAILS = [
+  "eclipse@freedom-leisure.co.uk",
+  "eclipse.gymnastics@yahoo.co.uk"
+];
 
 const execInput = document.querySelector('[name="execution"]');
 const diffInput = document.querySelector('[name="difficulty"]');
@@ -543,14 +546,19 @@ pinForm.addEventListener("submit", (event) => {
     return;
   }
   pinError.classList.add("hidden");
-  signInWithEmailAndPassword(auth, ADMIN_EMAIL, pin)
-    .then(() => {
-      pinInput.value = "";
-    })
-    .catch(() => {
-      pinError.textContent = "Incorrect PIN.";
-      pinError.classList.remove("hidden");
-    });
+  (async () => {
+    for (const email of ADMIN_EMAILS) {
+      try {
+        await signInWithEmailAndPassword(auth, email, pin);
+        pinInput.value = "";
+        return;
+      } catch (error) {
+        // Try the next email.
+      }
+    }
+    pinError.textContent = "Incorrect PIN.";
+    pinError.classList.remove("hidden");
+  })();
 });
 
 onAuthStateChanged(auth, (user) => {
