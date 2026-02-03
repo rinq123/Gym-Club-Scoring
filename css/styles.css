@@ -82,6 +82,7 @@ body.is-locked {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
   text-align: center;
   color: #f8f7ff;
+  overflow: hidden;
 }
 
 .auth-logo {
@@ -114,6 +115,7 @@ body.is-locked {
 }
 
 .auth-form input {
+  width: 100%;
   padding: 0.8rem 1rem;
   border-radius: 12px;
   border: 1px solid rgba(124, 77, 255, 0.4);
@@ -122,6 +124,10 @@ body.is-locked {
   font-size: 1.2rem;
   text-align: center;
   letter-spacing: 0.4rem;
+}
+
+.auth-form .btn {
+  width: 100%;
 }
 
 .auth-error {
