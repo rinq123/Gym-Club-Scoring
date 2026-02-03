@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=10">
+        <link rel="stylesheet" href="css/styles.css?v=12">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -48,6 +48,7 @@
 
                 <section class="card form-card">
                     <h2 class="section-title">Enter Score</h2>
+                    <p id="score-editing" class="edit-indicator hidden">Editing score</p>
                     <form id="score-form" class="form-grid">
                         <label class="field">Category
                             <select name="category" id="category"></select>
@@ -60,8 +61,8 @@
                         <label class="field">Total<input type="number" step="0.001" name="total" id="total" readonly></label>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn primary">Save Score</button>
-                            <button type="reset" class="btn ghost">Clear</button>
+                            <button type="submit" class="btn primary" id="score-submit">Save Score</button>
+                            <button type="reset" class="btn ghost" id="score-reset">Clear</button>
                         </div>
                     </form>
                 </section>
@@ -71,6 +72,7 @@
                         <h2 class="section-title">Manage Athletes / Groups</h2>
                         <span class="badge">Local roster</span>
                     </div>
+                    <p id="athlete-editing" class="edit-indicator hidden">Editing athlete/group</p>
                     <form id="athlete-form" class="form-grid">
                         <label class="field">Name / Group Name
                             <input type="text" id="athlete-name" placeholder="e.g. Team Aurora A" required>
@@ -96,7 +98,8 @@
                             </div>
                         </div>
                         <div class="form-actions">
-                            <button type="submit" class="btn primary">Add Athlete/Group</button>
+                            <button type="submit" class="btn primary" id="athlete-submit">Add Athlete/Group</button>
+                            <button type="button" class="btn ghost hidden" id="athlete-cancel">Cancel Edit</button>
                         </div>
                     </form>
                     <ul id="athlete-list" class="recent-list"></ul>
@@ -129,6 +132,6 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=6"></script>
+        <script type="module" src="js/admin.js?v=8"></script>
     </body>
 </html> 

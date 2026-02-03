@@ -249,6 +249,13 @@ label select:focus {
   color: var(--muted);
 }
 
+.edit-indicator {
+  margin: 0 0 0.8rem;
+  color: var(--accent-dark);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -414,6 +421,13 @@ table {
   border-radius: 12px;
   background: var(--surface-alt);
   color: var(--ink);
+  flex-wrap: wrap;
+}
+
+.list-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .btn.btn-small {

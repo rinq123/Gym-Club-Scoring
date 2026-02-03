@@ -47,6 +47,12 @@ const authGate = document.querySelector("#auth-gate");
 const pinForm = document.querySelector("#pin-form");
 const pinInput = document.querySelector("#pin-input");
 const pinError = document.querySelector("#pin-error");
+const scoreSubmitBtn = document.querySelector("#score-submit");
+const scoreResetBtn = document.querySelector("#score-reset");
+const athleteSubmitBtn = document.querySelector("#athlete-submit");
+const athleteCancelBtn = document.querySelector("#athlete-cancel");
+const scoreEditingLabel = document.querySelector("#score-editing");
+const athleteEditingLabel = document.querySelector("#athlete-editing");
 
 const settingsRef = doc(db, "settings", "current");
 const streamRef = doc(db, "streamState", "current");
@@ -58,6 +64,9 @@ let athletes = [];
 let scores = [];
 let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
 let isUnlocked = false;
+let editingAthleteId = null;
+let editingScoreId = null;
+let editingScore = null;
 
 function fillSelect(select, options) {
   select.innerHTML = "";
@@ -114,9 +123,13 @@ function validatePin(pin) {
 function renderAthleteOptions() {
   const category = categorySelect.value;
   athleteSelect.innerHTML = "";
+  const editingAthlete = editingScore?.athleteId;
   const scoredIds = new Set(
     scores.filter((score) => score.category === category).map((score) => score.athleteId)
   );
+  if (editingAthlete) {
+    scoredIds.delete(editingAthlete);
+  }
 
   const eligible = athletes.filter(
     (athlete) => athlete.categoryTags.includes(category) && !scoredIds.has(athlete.id)
@@ -167,6 +180,15 @@ function renderAthleteList() {
     const categoryLabel = athlete.categoryTags.join(", ") || "None";
     const gradeLabel = athlete.gradeTags ? athlete.gradeTags.join(", ") : "None";
     text.textContent = `${athlete.name} - ${athlete.groupType} - ${athlete.club} | ${categoryLabel} | ${gradeLabel}`;
+    const actions = document.createElement("div");
+    actions.className = "list-actions";
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn ghost btn-small";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => {
+      startAthleteEdit(athlete);
+    });
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "btn ghost btn-small";
@@ -186,7 +208,8 @@ function renderAthleteList() {
         await setDoc(streamRef, { performerId: null, mode: "idle", updatedAt: serverTimestamp() }, { merge: true });
       }
     });
-    item.append(text, removeBtn);
+    actions.append(editBtn, removeBtn);
+    item.append(text, actions);
     athleteList.appendChild(item);
   });
 }
@@ -214,6 +237,15 @@ function renderRecent() {
     const text = document.createElement("span");
     const athleteName = athlete ? athlete.name : "Unknown";
     text.textContent = `${athleteName} - ${score.category} - ${score.total.toFixed(3)}`;
+    const actions = document.createElement("div");
+    actions.className = "list-actions";
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn ghost btn-small";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => {
+      startScoreEdit(score);
+    });
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "btn ghost btn-small";
@@ -221,9 +253,67 @@ function renderRecent() {
     removeBtn.addEventListener("click", async () => {
       await deleteDoc(doc(db, "scores", score.id));
     });
-    item.append(text, removeBtn);
+    actions.append(editBtn, removeBtn);
+    item.append(text, actions);
     recentList.appendChild(item);
   });
+}
+
+function setScoreFormMode(isEditing) {
+  scoreSubmitBtn.textContent = isEditing ? "Update Score" : "Save Score";
+  scoreResetBtn.textContent = isEditing ? "Cancel Edit" : "Clear";
+  scoreEditingLabel.classList.toggle("hidden", !isEditing);
+}
+
+function setAthleteFormMode(isEditing) {
+  athleteSubmitBtn.textContent = isEditing ? "Update Athlete/Group" : "Add Athlete/Group";
+  athleteCancelBtn.classList.toggle("hidden", !isEditing);
+  athleteEditingLabel.classList.toggle("hidden", !isEditing);
+}
+
+function startAthleteEdit(athlete) {
+  editingAthleteId = athlete.id;
+  athleteNameInput.value = athlete.name || "";
+  athleteClubInput.value = athlete.club || "";
+  athleteGroupSelect.value = athlete.groupType || "Individual";
+  categoryTagsContainer.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = athlete.categoryTags?.includes(input.value) || false;
+  });
+  gradeTagsContainer.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = athlete.gradeTags?.includes(input.value) || false;
+  });
+  setAthleteFormMode(true);
+  athleteEditingLabel.textContent = `Editing athlete/group: ${athlete.name}`;
+}
+
+function clearAthleteEdit() {
+  editingAthleteId = null;
+  athleteForm.reset();
+  setAthleteFormMode(false);
+}
+
+function startScoreEdit(score) {
+  editingScoreId = score.id;
+  editingScore = score;
+  categorySelect.value = score.category;
+  renderAthleteOptions();
+  athleteSelect.value = score.athleteId;
+  execInput.value = score.execution?.toFixed ? score.execution.toFixed(3) : score.execution;
+  diffInput.value = score.difficulty?.toFixed ? score.difficulty.toFixed(3) : score.difficulty;
+  updateTotal();
+  setScoreFormMode(true);
+  const athlete = athletes.find((entry) => entry.id === score.athleteId);
+  const athleteName = athlete ? athlete.name : "Unknown";
+  scoreEditingLabel.textContent = `Editing score: ${athleteName}`;
+}
+
+function clearScoreEdit() {
+  editingScoreId = null;
+  editingScore = null;
+  form.reset();
+  updateTotal();
+  setScoreFormMode(false);
+  renderAthleteOptions();
 }
 
 function updateStreamStatus() {
@@ -334,6 +424,20 @@ form.addEventListener("submit", async (event) => {
   const total = parseFloat((execution + difficulty).toFixed(3));
   const grade = athlete?.gradeTags?.length === 1 ? athlete.gradeTags[0] : null;
 
+  if (editingScoreId) {
+    await setDoc(doc(db, "scores", editingScoreId), {
+      athleteId,
+      category,
+      grade,
+      execution,
+      difficulty,
+      total,
+      timestamp: serverTimestamp()
+    }, { merge: true });
+    clearScoreEdit();
+    return;
+  }
+
   await addDoc(scoresCol, {
     athleteId,
     category,
@@ -348,7 +452,12 @@ form.addEventListener("submit", async (event) => {
   updateTotal();
 });
 
-form.addEventListener("reset", () => {
+form.addEventListener("reset", (event) => {
+  if (editingScoreId) {
+    event.preventDefault();
+    clearScoreEdit();
+    return;
+  }
   setTimeout(updateTotal, 0);
 });
 
@@ -378,6 +487,8 @@ resetDemoBtn.addEventListener("click", async () => {
   await batch.commit();
   await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
   await setDoc(streamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
+  clearScoreEdit();
+  clearAthleteEdit();
 });
 
 lockAdminBtn.addEventListener("click", () => {
@@ -399,6 +510,19 @@ athleteForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (editingAthleteId) {
+    await setDoc(doc(db, "athletes", editingAthleteId), {
+      name,
+      club,
+      groupType,
+      categoryTags,
+      gradeTags,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    clearAthleteEdit();
+    return;
+  }
+
   await addDoc(athletesCol, {
     name,
     club,
@@ -409,6 +533,10 @@ athleteForm.addEventListener("submit", async (event) => {
   });
 
   athleteForm.reset();
+});
+
+athleteCancelBtn.addEventListener("click", () => {
+  clearAthleteEdit();
 });
 
 categorySelect.addEventListener("change", renderAthleteOptions);
