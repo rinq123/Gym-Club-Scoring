@@ -13,15 +13,16 @@ import {
   getDocs,
   writeBatch
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-import { signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
 const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational",
   categories: ["Mixed Pair", "Mixed Trio"],
   grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"],
-  pinCodes: ["1234"]
+  groupTypes: ["Individual", "Group"]
 };
+
+const ADMIN_EMAIL = "admin@eclipse.local";
 
 const execInput = document.querySelector('[name="execution"]');
 const diffInput = document.querySelector('[name="difficulty"]');
@@ -63,7 +64,6 @@ let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
 let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
-let isUnlocked = false;
 let editingAthleteId = null;
 let editingScoreId = null;
 let editingScore = null;
@@ -114,10 +114,6 @@ function lockUI() {
 function unlockUI() {
   document.body.classList.remove("is-locked");
   authGate.classList.add("hidden");
-}
-
-function validatePin(pin) {
-  return Array.isArray(settings.pinCodes) && settings.pinCodes.includes(pin);
 }
 
 function renderAthleteOptions() {
@@ -339,9 +335,7 @@ async function ensureSettings() {
     || !Array.isArray(data.grades)
     || data.grades.length === 0
     || !Array.isArray(data.groupTypes)
-    || data.groupTypes.length === 0
-    || !Array.isArray(data.pinCodes)
-    || data.pinCodes.length === 0;
+    || data.groupTypes.length === 0;
 
   if (needsUpdate) {
     await setDoc(settingsRef, DEFAULT_SETTINGS, { merge: true });
@@ -492,10 +486,11 @@ resetDemoBtn.addEventListener("click", async () => {
 });
 
 lockAdminBtn.addEventListener("click", () => {
-  sessionStorage.removeItem("adminPinOk");
   pinInput.value = "";
   pinError.classList.add("hidden");
-  lockUI();
+  signOut(auth).catch(() => {
+    lockUI();
+  });
 });
 
 athleteForm.addEventListener("submit", async (event) => {
@@ -544,30 +539,31 @@ categorySelect.addEventListener("change", renderAthleteOptions);
 pinForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const pin = pinInput.value.trim();
-  if (validatePin(pin)) {
-    sessionStorage.setItem("adminPinOk", "1");
-    pinError.classList.add("hidden");
-    isUnlocked = true;
-    unlockUI();
-  } else {
-    pinError.classList.remove("hidden");
+  if (!pin) {
+    return;
   }
+  pinError.classList.add("hidden");
+  signInWithEmailAndPassword(auth, ADMIN_EMAIL, pin)
+    .then(() => {
+      pinInput.value = "";
+    })
+    .catch(() => {
+      pinError.textContent = "Incorrect PIN.";
+      pinError.classList.remove("hidden");
+    });
 });
 
 onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    signInAnonymously(auth).catch(() => {});
+  if (user) {
+    unlockUI();
+    return;
   }
+  lockUI();
 });
 
 (async function init() {
-  lockUI();
   await ensureSettings();
   await ensureStreamState();
   updateTotal();
   subscribe();
-  if (sessionStorage.getItem("adminPinOk") === "1") {
-    isUnlocked = true;
-    unlockUI();
-  }
 })();
