@@ -89,6 +89,16 @@ let activeAthletesCol = null;
 let activeScoresCol = null;
 let activeUnsubscribers = [];
 
+function ensureActiveRefs() {
+  if (!activeCompetitionId) {
+    return false;
+  }
+  if (!activeSettingsRef || !activeStreamRef || !activeAthletesCol || !activeScoresCol) {
+    setActiveRefs(activeCompetitionId);
+  }
+  return Boolean(activeStreamRef);
+}
+
 function buildPublicSettings(nextSettings) {
   return {
     competitionName: nextSettings.competitionName,
@@ -666,7 +676,7 @@ form.addEventListener("reset", (event) => {
 });
 
 streamPerformer.addEventListener("change", async () => {
-  if (!activeStreamRef) {
+  if (!ensureActiveRefs()) {
     return;
   }
   const performerId = streamPerformer.value || null;
@@ -678,7 +688,7 @@ streamPerformer.addEventListener("change", async () => {
 
 streamButtons.forEach((button) => {
   button.addEventListener("click", async () => {
-    if (!activeStreamRef) {
+    if (!ensureActiveRefs()) {
       return;
     }
     const mode = button.dataset.stream;
@@ -716,6 +726,7 @@ competitionActivateBtn.addEventListener("click", async () => {
     return;
   }
   await setActiveCompetition(selectedId);
+  ensureActiveRefs();
 });
 
 competitionRenameBtn.addEventListener("click", async () => {
@@ -736,6 +747,7 @@ competitionRenameBtn.addEventListener("click", async () => {
 competitionCreateBtn.addEventListener("click", async () => {
   const name = competitionNameInput.value.trim() || DEFAULT_SETTINGS.competitionName;
   await createCompetition(name, { setActive: true });
+  ensureActiveRefs();
 });
 
 competitionArchiveBtn.addEventListener("click", async () => {
@@ -745,6 +757,7 @@ competitionArchiveBtn.addEventListener("click", async () => {
   const name = competitionNameInput.value.trim() || DEFAULT_SETTINGS.competitionName;
   await setDoc(doc(db, "competitions", activeCompetitionId), { archived: true }, { merge: true });
   await createCompetition(name, { setActive: true });
+  ensureActiveRefs();
 });
 
 competitionDeleteBtn.addEventListener("click", async () => {
