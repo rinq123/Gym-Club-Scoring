@@ -193,6 +193,10 @@ function bindCompetition(competitionId) {
     renderAll();
     return;
   }
+  athletes = [];
+  scores = [];
+  renderAll();
+  triggerUpdating();
   if (unsubAthletes) {
     unsubAthletes();
   }

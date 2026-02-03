@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=15">
+        <link rel="stylesheet" href="css/styles.css?v=18">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -137,9 +137,11 @@
                             <select id="stream-performer"></select>
                         </label>
                         <div class="form-actions">
+                            <button type="button" class="btn ghost" data-stream="welcome">Welcome Screen</button>
                             <button type="button" class="btn ghost" data-stream="idle">Idle / Break</button>
                             <button type="button" class="btn ghost" data-stream="scoreboard">Scoreboard Only</button>
                             <button type="button" class="btn ghost" data-stream="mix">Idle + Scoreboard Mix</button>
+                            <button type="button" class="btn ghost" data-stream="announcement">Announcement</button>
                         </div>
                         <p id="stream-status" class="footer-note">Mode: Idle</p>
                     </div>
@@ -154,6 +156,6 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=14"></script>
+        <script type="module" src="js/admin.js?v=17"></script>
     </body>
 </html> 

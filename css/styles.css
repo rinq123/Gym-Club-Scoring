@@ -713,6 +713,34 @@ table {
   box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
 }
 
+.stream-welcome,
+.stream-announcement {
+  min-height: 45vh;
+  place-items: center;
+  text-align: center;
+  padding: 3.5rem;
+  border-radius: 20px;
+  background: rgba(20, 20, 35, 0.9);
+  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.stream-welcome::before,
+.stream-announcement::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../img/eclipselogo.png") center / contain no-repeat;
+  opacity: 0.08;
+}
+
+.stream-welcome > *,
+.stream-announcement > * {
+  position: relative;
+  z-index: 1;
+}
+
 .stream-idle-title {
   font-size: clamp(2.2rem, 4vw, 4rem);
   margin: 0;
@@ -811,6 +839,11 @@ table {
 }
 
 .stream-panel.is-active.stream-idle {
+  display: grid;
+}
+
+.stream-panel.is-active.stream-welcome,
+.stream-panel.is-active.stream-announcement {
   display: grid;
 }
 

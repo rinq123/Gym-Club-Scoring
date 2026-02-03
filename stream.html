@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gymnastics Stream</title>
-  <link rel="stylesheet" href="css/styles.css?v=15" />
+  <link rel="stylesheet" href="css/styles.css?v=18" />
 </head>
 <body class="display-body stream-body">
   <div class="display stream">
@@ -21,9 +21,21 @@
     </header>
 
     <main class="stream-main">
+      <section id="stream-welcome" class="stream-panel stream-welcome">
+        <p class="stream-section-label">Welcome</p>
+        <p id="stream-welcome-title" class="stream-idle-title">Welcome to Eclipse Invitational 2026</p>
+        <p class="stream-idle-subtitle">Please take your seats and enjoy the competition.</p>
+      </section>
+
       <section id="stream-idle" class="stream-panel stream-idle">
         <p class="stream-idle-title" id="stream-idle-title">Eclipse Gymnastics Invitational</p>
         <p class="stream-idle-subtitle">Live coverage will resume shortly</p>
+      </section>
+
+      <section id="stream-announcement" class="stream-panel stream-announcement">
+        <p class="stream-section-label">Announcement</p>
+        <p class="stream-idle-title">Announcement in progress</p>
+        <p class="stream-idle-subtitle">Please stand by.</p>
       </section>
 
       <section id="stream-spotlight" class="stream-panel stream-spotlight">
@@ -57,6 +69,6 @@
     </main>
   </div>
 
-  <script type="module" src="js/stream.js?v=6"></script>
+  <script type="module" src="js/stream.js?v=9"></script>
 </body>
 </html>

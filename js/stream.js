@@ -13,16 +13,20 @@ const DEFAULT_SETTINGS = {
   grades: ["Grade 1", "Grade 2"],
   groupTypes: ["Individual", "Group"]
 };
+const DEFAULT_STREAM_STATE = { mode: "welcome", performerId: null, mixSeconds: 20 };
 
 const settingsRef = doc(db, "settingsPublic", "current");
 
 const title = document.querySelector("#stream-title");
 const updated = document.querySelector("#stream-updated");
 const idlePanel = document.querySelector("#stream-idle");
+const welcomePanel = document.querySelector("#stream-welcome");
+const announcementPanel = document.querySelector("#stream-announcement");
 const spotlightPanel = document.querySelector("#stream-spotlight");
 const scoreboardPanel = document.querySelector("#stream-scoreboard");
 const streamEyebrow = document.querySelector("#stream-eyebrow");
 const streamIdleTitle = document.querySelector("#stream-idle-title");
+const streamWelcomeTitle = document.querySelector("#stream-welcome-title");
 const performerName = document.querySelector("#stream-performer-name");
 const performerClub = document.querySelector("#stream-performer-club");
 const performerScore = document.querySelector("#stream-performer-score");
@@ -32,7 +36,7 @@ const scoreboardWrap = scoreboardPanel ? scoreboardPanel.querySelector(".table-w
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
-let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+let streamState = { ...DEFAULT_STREAM_STATE };
 let mixTimer = null;
 let mixPhase = "idle";
 let lastMixSeconds = null;
@@ -43,7 +47,7 @@ let unsubScores = null;
 let unsubStream = null;
 
 function setPanel(panel) {
-  [idlePanel, spotlightPanel, scoreboardPanel].forEach((section) => {
+  [welcomePanel, idlePanel, announcementPanel, spotlightPanel, scoreboardPanel].forEach((section) => {
     section.classList.toggle("is-active", section === panel);
   });
 }
@@ -135,8 +139,12 @@ function renderStream() {
 
   if (mode === "mix") {
     setPanel(mixPhase === "idle" ? idlePanel : scoreboardPanel);
+  } else if (mode === "welcome") {
+    setPanel(welcomePanel);
   } else if (mode === "scoreboard") {
     setPanel(scoreboardPanel);
+  } else if (mode === "announcement") {
+    setPanel(announcementPanel);
   } else if (mode === "spotlight") {
     setPanel(spotlightPanel);
   } else {
@@ -146,8 +154,12 @@ function renderStream() {
   if (mode === "spotlight") {
     const details = [categoryTag, gradeTag].filter(Boolean).join(" • ");
     title.textContent = details ? `Current Performer — ${details}` : "Current Performer";
+  } else if (mode === "welcome") {
+    title.textContent = "Welcome";
   } else if (mode === "scoreboard") {
     title.textContent = "Scoreboard";
+  } else if (mode === "announcement") {
+    title.textContent = "Announcement";
   } else if (mode === "mix") {
     title.textContent = "Live Stream";
   } else {
@@ -190,10 +202,15 @@ function bindCompetition(competitionId) {
   if (!competitionId) {
     athletes = [];
     scores = [];
-    streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+    streamState = { ...DEFAULT_STREAM_STATE };
     renderStream();
     return;
   }
+  athletes = [];
+  scores = [];
+  streamState = { ...DEFAULT_STREAM_STATE };
+  triggerUpdating();
+  renderStream();
   if (unsubAthletes) {
     unsubAthletes();
   }
@@ -220,8 +237,8 @@ function bindCompetition(competitionId) {
 
   unsubStream = onSnapshot(streamRef, (snap) => {
     streamState = snap.exists()
-      ? { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() }
-      : { mode: "idle", performerId: null, mixSeconds: 20 };
+      ? { ...DEFAULT_STREAM_STATE, ...snap.data() }
+      : { ...DEFAULT_STREAM_STATE };
     renderStream();
   });
 }
@@ -244,6 +261,10 @@ onSnapshot(settingsRef, (snap) => {
   }
   if (streamIdleTitle) {
     streamIdleTitle.textContent = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+  }
+  if (streamWelcomeTitle) {
+    const baseName = settings.competitionName || DEFAULT_SETTINGS.competitionName;
+    streamWelcomeTitle.textContent = `Welcome to ${baseName}`;
   }
   renderStream();
 });

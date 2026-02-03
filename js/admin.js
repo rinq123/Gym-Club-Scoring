@@ -1,4 +1,4 @@
-import { db, auth } from "./firebase.js";
+﻿import { db, auth } from "./firebase.js";
 import {
   collection,
   doc,
@@ -74,7 +74,7 @@ const competitionsCol = collection(db, "competitions");
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
-let streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+const DEFAULT_STREAM_STATE = { mode: "welcome", performerId: null, mixSeconds: 20 };
 let editingAthleteId = null;
 let editingScoreId = null;
 let editingScore = null;
@@ -164,6 +164,8 @@ async function setActiveCompetition(id) {
     return;
   }
   activeCompetitionId = id;
+  bindActiveCompetition(id);
+  renderCompetitionSelect();
   await setDoc(settingsRef, { activeCompetitionId: id }, { merge: true });
 }
 
@@ -194,9 +196,7 @@ async function createCompetition(name, { setActive = true } = {}) {
     competitionName: trimmedName
   }, { merge: true });
   await setDoc(refs.streamRef, {
-    mode: "idle",
-    performerId: null,
-    mixSeconds: 20,
+    ...DEFAULT_STREAM_STATE,
     updatedAt: serverTimestamp()
   }, { merge: true });
 
@@ -324,11 +324,11 @@ function bindActiveCompetition(id) {
 
   activeUnsubscribers.push(onSnapshot(activeStreamRef, (snap) => {
     if (!snap.exists()) {
-      streamState = { mode: "idle", performerId: null, mixSeconds: 20 };
+      streamState = { ...DEFAULT_STREAM_STATE };
       updateStreamStatus();
       return;
     }
-    streamState = { mode: "idle", performerId: null, mixSeconds: 20, ...snap.data() };
+    streamState = { ...DEFAULT_STREAM_STATE, ...snap.data() };
     updateStreamStatus();
     renderStreamPerformerOptions();
   }));
@@ -581,7 +581,9 @@ function clearScoreEdit() {
 function updateStreamStatus() {
   const modeLabel = streamState.mode === "mix" ? "Idle + Scoreboard Mix" :
     streamState.mode === "scoreboard" ? "Scoreboard Only" :
-    streamState.mode === "spotlight" ? "Spotlight" : "Idle";
+    streamState.mode === "spotlight" ? "Spotlight" :
+    streamState.mode === "welcome" ? "Welcome Screen" :
+    streamState.mode === "announcement" ? "Announcement" : "Idle";
   streamStatus.textContent = `Mode: ${modeLabel}`;
   streamButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.stream === streamState.mode);
@@ -687,7 +689,7 @@ resetDemoBtn.addEventListener("click", async () => {
   await deleteCollectionDocs(activeScoresCol);
   await setDoc(activeSettingsRef, { ...DEFAULT_SETTINGS, competitionName: settings.competitionName }, { merge: true });
   await syncPublicSettings({ ...DEFAULT_SETTINGS, competitionName: settings.competitionName });
-  await setDoc(activeStreamRef, { mode: "idle", performerId: null, mixSeconds: 20, updatedAt: serverTimestamp() });
+  await setDoc(activeStreamRef, { ...DEFAULT_STREAM_STATE, updatedAt: serverTimestamp() });
   clearScoreEdit();
   clearAthleteEdit();
 });
@@ -863,3 +865,7 @@ onAuthStateChanged(auth, (user) => {
 });
 
 updateTotal();
+
+
+
+
