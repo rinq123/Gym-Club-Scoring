@@ -798,7 +798,7 @@ table {
 
 .stream-scoreboard .display-table th,
 .stream-scoreboard .display-table td {
-  padding: 0.7rem 0.8rem;
+  padding: 0.55rem 0.65rem;
   white-space: nowrap;
 }
 
@@ -850,6 +850,11 @@ table {
 .stream-scoreboard .display-table th:nth-child(11),
 .stream-scoreboard .display-table td:nth-child(11) {
   width: 9%;
+}
+
+.stream-scoreboard .display-table td:last-child {
+  font-size: clamp(1.05rem, 1.6vw, 1.6rem);
+  font-weight: 700;
 }
 
 .display-table thead th {
