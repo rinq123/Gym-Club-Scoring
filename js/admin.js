@@ -111,6 +111,7 @@ let activeScoresCol = null;
 let activeUnsubscribers = [];
 let isSavingScore = false;
 let isSavingAthlete = false;
+const pendingScoreKeys = new Set();
 
 const ADMIN_EMAIL_KEY = "eclipseAdminEmail";
 
@@ -131,6 +132,29 @@ function buildPublicSettings(nextSettings) {
     grades: nextSettings.grades,
     activeCompetitionId
   };
+}
+
+function buildScoreKey(athleteId, category) {
+  return `${athleteId}::${category}`;
+}
+
+function markScorePending(athleteId, category) {
+  if (!athleteId || !category) {
+    return;
+  }
+  pendingScoreKeys.add(buildScoreKey(athleteId, category));
+}
+
+function clearPendingWithScores() {
+  if (!pendingScoreKeys.size) {
+    return;
+  }
+  const existing = new Set(scores.map((score) => buildScoreKey(score.athleteId, score.category)));
+  pendingScoreKeys.forEach((key) => {
+    if (existing.has(key)) {
+      pendingScoreKeys.delete(key);
+    }
+  });
 }
 
 async function syncPublicSettings(nextSettings) {
@@ -391,6 +415,7 @@ function bindActiveCompetition(id) {
 
   activeUnsubscribers.push(onSnapshot(query(activeScoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    clearPendingWithScores();
     renderRecent();
     renderAthleteOptions();
   }));
@@ -481,9 +506,17 @@ function renderAthleteOptions() {
   const scoredIds = new Set(
     scores.filter((score) => score.category === category).map((score) => score.athleteId)
   );
+  const pendingIds = new Set();
+  pendingScoreKeys.forEach((key) => {
+    const [athleteId, pendingCategory] = key.split("::");
+    if (pendingCategory === category) {
+      pendingIds.add(athleteId);
+    }
+  });
   if (editingAthlete) {
     scoredIds.delete(editingAthlete);
   }
+  pendingIds.forEach((id) => scoredIds.add(id));
 
   const eligible = athletes.filter(
     (athlete) => athlete.categoryTags.includes(category) && !scoredIds.has(athlete.id)
@@ -645,6 +678,26 @@ function setAthleteFormMode(isEditing) {
   athleteEditingLabel.classList.toggle("hidden", !isEditing);
 }
 
+function enforceSingleCheck(container) {
+  if (!container) {
+    return;
+  }
+  container.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target || target.type !== "checkbox") {
+      return;
+    }
+    if (!target.checked) {
+      return;
+    }
+    container.querySelectorAll("input[type='checkbox']").forEach((input) => {
+      if (input !== target) {
+        input.checked = false;
+      }
+    });
+  });
+}
+
 function startAthleteEdit(athlete) {
   editingAthleteId = athlete.id;
   athleteNameInput.value = athlete.name || "";
@@ -746,6 +799,7 @@ form.addEventListener("submit", async (event) => {
         total,
         timestamp: serverTimestamp()
       }, { merge: true });
+      markScorePending(athleteId, category);
       clearScoreEdit();
       return;
     }
@@ -761,8 +815,13 @@ form.addEventListener("submit", async (event) => {
       timestamp: serverTimestamp()
     });
 
-    form.reset();
+    markScorePending(athleteId, category);
+    totalInput.value = "";
     renderAthleteOptions();
+    const firstOption = athleteSelect.querySelector("option:not([disabled])");
+    if (firstOption) {
+      athleteSelect.value = firstOption.value;
+    }
   } finally {
     isSavingScore = false;
     scoreSubmitBtn.disabled = false;
@@ -775,6 +834,7 @@ form.addEventListener("reset", (event) => {
     clearScoreEdit();
     return;
   }
+  totalInput.value = "";
 });
 
 streamPerformer.addEventListener("change", async () => {
@@ -932,46 +992,52 @@ athleteForm.addEventListener("submit", async (event) => {
   isSavingAthlete = true;
   athleteSubmitBtn.disabled = true;
   try {
-    if (editingAthleteId) {
-      await setDoc(doc(activeAthletesCol, editingAthleteId), {
-        name,
-        club,
-        competitorNumber,
-        categoryTags,
-        gradeTags,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      await updateScoresForAthlete(editingAthleteId, {
-        athleteName: name,
-        athleteClub: club,
-        competitorNumber
-      });
-      if (streamState.performerId === editingAthleteId && activeStreamRef) {
-        await setDoc(activeStreamRef, {
-          performerId: editingAthleteId,
-          performerName: name,
-          performerClub: club,
-          performerNumber: competitorNumber,
-          performerCategory: categoryTags[0] || null,
-          performerGrade: gradeTags[0] || null,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-      clearAthleteEdit();
-      return;
-    }
-
-    await addDoc(activeAthletesCol, {
+  if (editingAthleteId) {
+    await setDoc(doc(activeAthletesCol, editingAthleteId), {
       name,
       club,
       competitorNumber,
       categoryTags,
       gradeTags,
-      createdAt: serverTimestamp()
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    await updateScoresForAthlete(editingAthleteId, {
+      athleteName: name,
+      athleteClub: club,
+      competitorNumber
     });
+    if (streamState.performerId === editingAthleteId && activeStreamRef) {
+      await setDoc(activeStreamRef, {
+        performerId: editingAthleteId,
+        performerName: name,
+        performerClub: club,
+        performerNumber: competitorNumber,
+        performerCategory: categoryTags[0] || null,
+        performerGrade: gradeTags[0] || null,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+    clearAthleteEdit();
+    return;
+  }
 
-    athleteForm.reset();
-  } finally {
+  await addDoc(activeAthletesCol, {
+    name,
+    club,
+    competitorNumber,
+    categoryTags,
+    gradeTags,
+    createdAt: serverTimestamp()
+  });
+
+  athleteForm.reset();
+  categoryTagsContainer.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = false;
+  });
+  gradeTagsContainer.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = false;
+  });
+} finally {
     isSavingAthlete = false;
     athleteSubmitBtn.disabled = false;
   }
@@ -982,6 +1048,9 @@ athleteCancelBtn.addEventListener("click", () => {
 });
 
 categorySelect.addEventListener("change", renderAthleteOptions);
+
+enforceSingleCheck(categoryTagsContainer);
+enforceSingleCheck(gradeTagsContainer);
 
 pinForm.addEventListener("submit", (event) => {
   event.preventDefault();
