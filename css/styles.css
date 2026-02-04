@@ -770,14 +770,14 @@ table {
 }
 
 .stream-performer-name {
-  font-size: clamp(2.4rem, 4.5vw, 4.5rem);
+  font-size: clamp(3rem, 5.2vw, 6rem);
   margin: 0 0 0.5rem;
 }
 
 .stream-performer-meta {
   color: #b7b3c9;
   margin: 0 0 2rem;
-  font-size: 1.1rem;
+  font-size: clamp(1.2rem, 2vw, 2rem);
 }
 
 .stream-score {
@@ -791,10 +791,11 @@ table {
   letter-spacing: 2px;
   color: #c6a8ff;
   margin: 0;
+  font-size: clamp(1.1rem, 1.6vw, 1.6rem);
 }
 
 .stream-score-value {
-  font-size: clamp(3rem, 5vw, 5rem);
+  font-size: clamp(4rem, 7vw, 8rem);
   margin: 0;
   color: #f8f7ff;
 }
