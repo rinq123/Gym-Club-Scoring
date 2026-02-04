@@ -81,6 +81,8 @@ const adminTitle = document.querySelector("#admin-competition-title");
 const helpToggle = document.querySelector("#help-toggle");
 const helpPanel = document.querySelector("#help-panel");
 const helpClose = document.querySelector("#help-close");
+const exportAthletesBtn = document.querySelector("#export-athletes");
+const exportScoresBtn = document.querySelector("#export-scores");
 
 const settingsRef = doc(db, "settings", "current");
 const publicSettingsRef = doc(db, "settingsPublic", "current");
@@ -801,6 +803,81 @@ function toDate(value) {
   return new Date(value);
 }
 
+function buildExportFilename(prefix) {
+  const base = (settings.competitionName || DEFAULT_SETTINGS.competitionName)
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  const date = new Date().toISOString().slice(0, 10);
+  return `${prefix}-${base || "competition"}-${date}.csv`;
+}
+
+function exportAthletes() {
+  const rows = [
+    ["Gymnast(s)", "Comp No.", "Club", "Categories", "Grades"]
+  ];
+  athletes.forEach((athlete) => {
+    rows.push([
+      athlete.name || "",
+      athlete.competitorNumber || "",
+      athlete.club || "",
+      (athlete.categoryTags || []).join(" | "),
+      (athlete.gradeTags || []).join(" | ")
+    ]);
+  });
+  downloadCsv(buildExportFilename("gymnasts"), rows);
+}
+
+function exportScores() {
+  const rows = [
+    ["Timestamp", "Gymnast(s)", "Comp No.", "Club", "Category", "Grade", "Artistry", "Execution", "Difficulty", "Penalties", "Total"]
+  ];
+  scores
+    .slice()
+    .sort((a, b) => toDate(a.timestamp) - toDate(b.timestamp))
+    .forEach((score) => {
+      const totalNumeric = Number(score.total);
+      rows.push([
+        toDate(score.timestamp).toLocaleString(),
+        score.athleteName || "",
+        score.competitorNumber || "",
+        score.athleteClub || "",
+        score.category || "",
+        score.grade || "",
+        Number.isFinite(Number(score.artistry)) ? Number(score.artistry).toFixed(3) : "",
+        Number.isFinite(Number(score.execution)) ? Number(score.execution).toFixed(3) : "",
+        Number.isFinite(Number(score.difficulty)) ? Number(score.difficulty).toFixed(3) : "",
+        Number.isFinite(Number(score.penalties)) ? Number(score.penalties).toFixed(3) : "",
+        Number.isFinite(totalNumeric) ? totalNumeric.toFixed(3) : ""
+      ]);
+    });
+  downloadCsv(buildExportFilename("scores"), rows);
+}
+
+function formatCsvValue(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  const str = String(value);
+  if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+    return `"${str.replace(/"/g, "\"\"")}"`;
+  }
+  return str;
+}
+
+function downloadCsv(filename, rows) {
+  const content = rows.map((row) => row.map(formatCsvValue).join(",")).join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!activeScoresCol) {
@@ -1042,6 +1119,18 @@ lockAdminBtn.addEventListener("click", () => {
     lockUI();
   });
 });
+
+if (exportAthletesBtn) {
+  exportAthletesBtn.addEventListener("click", () => {
+    exportAthletes();
+  });
+}
+
+if (exportScoresBtn) {
+  exportScoresBtn.addEventListener("click", () => {
+    exportScores();
+  });
+}
 
 function toggleHelp(show) {
   if (!helpPanel) {
