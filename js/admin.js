@@ -36,11 +36,6 @@ const DEFAULT_SETTINGS = {
   ]
 };
 
-const ADMIN_EMAILS = [
-  "eclipse@freedom-leisure.co.uk",
-  "eclipse.gymnastics@yahoo.co.uk"
-];
-
 const execInput = document.querySelector('[name="execution"]');
 const diffInput = document.querySelector('[name="difficulty"]');
 const totalInput = document.querySelector('[name="total"]');
@@ -63,6 +58,7 @@ const resetDemoBtn = document.querySelector("#reset-demo");
 const lockAdminBtn = document.querySelector("#lock-admin");
 const authGate = document.querySelector("#auth-gate");
 const pinForm = document.querySelector("#pin-form");
+const emailInput = document.querySelector("#email-input");
 const pinInput = document.querySelector("#pin-input");
 const pinError = document.querySelector("#pin-error");
 const scoreSubmitBtn = document.querySelector("#score-submit");
@@ -80,6 +76,9 @@ const competitionArchiveBtn = document.querySelector("#competition-archive");
 const competitionDeleteBtn = document.querySelector("#competition-delete");
 const competitionStatus = document.querySelector("#competition-status");
 const adminTitle = document.querySelector("#admin-competition-title");
+const helpToggle = document.querySelector("#help-toggle");
+const helpPanel = document.querySelector("#help-panel");
+const helpClose = document.querySelector("#help-close");
 
 const settingsRef = doc(db, "settings", "current");
 const publicSettingsRef = doc(db, "settingsPublic", "current");
@@ -88,7 +87,16 @@ const competitionsCol = collection(db, "competitions");
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
-const DEFAULT_STREAM_STATE = { mode: "welcome", performerId: null, mixSeconds: 20 };
+const DEFAULT_STREAM_STATE = {
+  mode: "welcome",
+  performerId: null,
+  performerName: null,
+  performerClub: null,
+  performerNumber: null,
+  performerCategory: null,
+  performerGrade: null,
+  mixSeconds: 20
+};
 let streamState = { ...DEFAULT_STREAM_STATE };
 let editingAthleteId = null;
 let editingScoreId = null;
@@ -103,6 +111,10 @@ let activeStreamRef = null;
 let activeAthletesCol = null;
 let activeScoresCol = null;
 let activeUnsubscribers = [];
+let isSavingScore = false;
+let isSavingAthlete = false;
+
+const ADMIN_EMAIL_KEY = "eclipseAdminEmail";
 
 function ensureActiveRefs() {
   if (!activeCompetitionId) {
@@ -266,6 +278,33 @@ async function deleteCompetition(id) {
   await deleteDoc(refs.settingsRef);
   await deleteDoc(refs.streamRef);
   await deleteDoc(refs.competitionRef);
+}
+
+async function updateScoresForAthlete(athleteId, updates) {
+  if (!activeScoresCol || !athleteId) {
+    return;
+  }
+  const snapshot = await getDocs(activeScoresCol);
+  if (snapshot.empty) {
+    return;
+  }
+  let batch = writeBatch(db);
+  let count = 0;
+  for (const docSnap of snapshot.docs) {
+    if (docSnap.data().athleteId !== athleteId) {
+      continue;
+    }
+    batch.set(docSnap.ref, updates, { merge: true });
+    count += 1;
+    if (count >= 450) {
+      await batch.commit();
+      batch = writeBatch(db);
+      count = 0;
+    }
+  }
+  if (count > 0) {
+    await batch.commit();
+  }
 }
 
 async function migrateRootData(targetId) {
@@ -490,6 +529,28 @@ function renderStreamPerformerOptions() {
   }
 }
 
+function buildPerformerPayload(performerId) {
+  if (!performerId) {
+    return {
+      performerId: null,
+      performerName: null,
+      performerClub: null,
+      performerNumber: null,
+      performerCategory: null,
+      performerGrade: null
+    };
+  }
+  const athlete = athletes.find((entry) => entry.id === performerId);
+  return {
+    performerId,
+    performerName: athlete?.name || null,
+    performerClub: athlete?.club || null,
+    performerNumber: athlete?.competitorNumber || null,
+    performerCategory: athlete?.categoryTags?.[0] || null,
+    performerGrade: athlete?.gradeTags?.[0] || null
+  };
+}
+
 function renderAthleteList() {
   athleteList.innerHTML = "";
   athletes.forEach((athlete) => {
@@ -524,7 +585,7 @@ function renderAthleteList() {
       });
       await batch.commit();
       if (streamState.performerId === athlete.id) {
-        await setDoc(activeStreamRef, { performerId: null, mode: "idle", updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(activeStreamRef, { ...buildPerformerPayload(null), mode: "idle", updatedAt: serverTimestamp() }, { merge: true });
       }
     });
     actions.append(editBtn, removeBtn);
@@ -551,11 +612,11 @@ function renderRecent() {
   }
 
   recentScores.forEach((score) => {
-    const athlete = athletes.find((entry) => entry.id === score.athleteId);
     const item = document.createElement("li");
     const text = document.createElement("span");
-    const athleteName = athlete ? athlete.name : "Unknown";
-    const compNumber = athlete?.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    const athleteName = score.athleteName || athletes.find((entry) => entry.id === score.athleteId)?.name || "Unknown";
+    const compNumberValue = score.competitorNumber || athletes.find((entry) => entry.id === score.athleteId)?.competitorNumber;
+    const compNumber = compNumberValue ? `#${compNumberValue}` : "No #";
     text.textContent = `${athleteName} ${compNumber} - ${score.category} - ${score.total.toFixed(3)}`;
     const actions = document.createElement("div");
     actions.className = "list-actions";
@@ -666,6 +727,9 @@ form.addEventListener("submit", async (event) => {
   if (!activeScoresCol) {
     return;
   }
+  if (isSavingScore) {
+    return;
+  }
   const execution = parseFloat(execInput.value);
   const difficulty = parseFloat(diffInput.value);
   const category = categorySelect.value;
@@ -678,33 +742,49 @@ form.addEventListener("submit", async (event) => {
 
   const total = parseFloat((execution + difficulty).toFixed(3));
   const grade = athlete?.gradeTags?.length === 1 ? athlete.gradeTags[0] : null;
+  const athleteName = athlete?.name || "Unknown";
+  const athleteClub = athlete?.club || "";
+  const competitorNumber = athlete?.competitorNumber || "";
 
-  if (editingScoreId) {
-    await setDoc(doc(activeScoresCol, editingScoreId), {
+  isSavingScore = true;
+  scoreSubmitBtn.disabled = true;
+  try {
+    if (editingScoreId) {
+      await setDoc(doc(activeScoresCol, editingScoreId), {
+        athleteId,
+        category,
+        grade,
+        athleteName,
+        athleteClub,
+        competitorNumber,
+        execution,
+        difficulty,
+        total,
+        timestamp: serverTimestamp()
+      }, { merge: true });
+      clearScoreEdit();
+      return;
+    }
+
+    await addDoc(activeScoresCol, {
       athleteId,
       category,
       grade,
+      athleteName,
+      athleteClub,
+      competitorNumber,
       execution,
       difficulty,
       total,
       timestamp: serverTimestamp()
-    }, { merge: true });
-    clearScoreEdit();
-    return;
+    });
+
+    form.reset();
+    updateTotal();
+  } finally {
+    isSavingScore = false;
+    scoreSubmitBtn.disabled = false;
   }
-
-  await addDoc(activeScoresCol, {
-    athleteId,
-    category,
-    grade,
-    execution,
-    difficulty,
-    total,
-    timestamp: serverTimestamp()
-  });
-
-  form.reset();
-  updateTotal();
 });
 
 form.addEventListener("reset", (event) => {
@@ -722,9 +802,10 @@ streamPerformer.addEventListener("change", async () => {
   }
   const performerId = streamPerformer.value || null;
   const mode = performerId ? "spotlight" : "idle";
-  streamState = { ...streamState, performerId, mode };
+  const performerPayload = buildPerformerPayload(performerId);
+  streamState = { ...streamState, ...performerPayload, mode };
   updateStreamStatus();
-  await setDoc(activeStreamRef, { performerId, mode, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(activeStreamRef, { ...performerPayload, mode, updatedAt: serverTimestamp() }, { merge: true });
 });
 
 streamButtons.forEach((button) => {
@@ -734,14 +815,15 @@ streamButtons.forEach((button) => {
     }
     const mode = button.dataset.stream;
     const performerId = mode === "spotlight" ? streamState.performerId : null;
-    streamState = { ...streamState, mode, performerId };
+    const performerPayload = buildPerformerPayload(performerId);
+    streamState = { ...streamState, ...performerPayload, mode };
     updateStreamStatus();
-    await setDoc(activeStreamRef, { mode, performerId, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(activeStreamRef, { ...performerPayload, mode, updatedAt: serverTimestamp() }, { merge: true });
   });
 });
 
 resetDemoBtn.addEventListener("click", async () => {
-  if (!window.confirm("Reset all demo data? This clears scores and roster changes.")) {
+  if (!window.confirm("Clear all competition data? This deletes athletes and scores for the active competition.")) {
     return;
   }
   if (!activeCompetitionId || !activeAthletesCol || !activeScoresCol || !activeStreamRef) {
@@ -825,9 +907,35 @@ lockAdminBtn.addEventListener("click", () => {
   });
 });
 
+function toggleHelp(show) {
+  if (!helpPanel) {
+    return;
+  }
+  helpPanel.classList.toggle("hidden", !show);
+}
+
+if (helpToggle) {
+  helpToggle.addEventListener("click", () => toggleHelp(true));
+}
+
+if (helpClose) {
+  helpClose.addEventListener("click", () => toggleHelp(false));
+}
+
+if (helpPanel) {
+  helpPanel.addEventListener("click", (event) => {
+    if (event.target === helpPanel) {
+      toggleHelp(false);
+    }
+  });
+}
+
 athleteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!activeAthletesCol) {
+    return;
+  }
+  if (isSavingAthlete) {
     return;
   }
   const name = athleteNameInput.value.trim();
@@ -840,29 +948,52 @@ athleteForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (editingAthleteId) {
-    await setDoc(doc(activeAthletesCol, editingAthleteId), {
+  isSavingAthlete = true;
+  athleteSubmitBtn.disabled = true;
+  try {
+    if (editingAthleteId) {
+      await setDoc(doc(activeAthletesCol, editingAthleteId), {
+        name,
+        club,
+        competitorNumber,
+        categoryTags,
+        gradeTags,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await updateScoresForAthlete(editingAthleteId, {
+        athleteName: name,
+        athleteClub: club,
+        competitorNumber
+      });
+      if (streamState.performerId === editingAthleteId && activeStreamRef) {
+        await setDoc(activeStreamRef, {
+          performerId: editingAthleteId,
+          performerName: name,
+          performerClub: club,
+          performerNumber: competitorNumber,
+          performerCategory: categoryTags[0] || null,
+          performerGrade: gradeTags[0] || null,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+      clearAthleteEdit();
+      return;
+    }
+
+    await addDoc(activeAthletesCol, {
       name,
       club,
       competitorNumber,
       categoryTags,
       gradeTags,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    clearAthleteEdit();
-    return;
+      createdAt: serverTimestamp()
+    });
+
+    athleteForm.reset();
+  } finally {
+    isSavingAthlete = false;
+    athleteSubmitBtn.disabled = false;
   }
-
-  await addDoc(activeAthletesCol, {
-    name,
-    club,
-    competitorNumber,
-    categoryTags,
-    gradeTags,
-    createdAt: serverTimestamp()
-  });
-
-  athleteForm.reset();
 });
 
 athleteCancelBtn.addEventListener("click", () => {
@@ -874,22 +1005,20 @@ categorySelect.addEventListener("change", renderAthleteOptions);
 pinForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const pin = pinInput.value.trim();
-  if (!pin) {
+  const email = emailInput?.value.trim();
+  if (!pin || !email) {
     return;
   }
   pinError.classList.add("hidden");
   (async () => {
-    for (const email of ADMIN_EMAILS) {
-      try {
-        await signInWithEmailAndPassword(auth, email, pin);
-        pinInput.value = "";
-        return;
-      } catch (error) {
-        // Try the next email.
-      }
+    try {
+      await signInWithEmailAndPassword(auth, email, pin);
+      localStorage.setItem(ADMIN_EMAIL_KEY, email);
+      pinInput.value = "";
+    } catch (error) {
+      pinError.textContent = "Incorrect email or PIN.";
+      pinError.classList.remove("hidden");
     }
-    pinError.textContent = "Incorrect PIN.";
-    pinError.classList.remove("hidden");
   })();
 });
 
@@ -928,6 +1057,11 @@ onAuthStateChanged(auth, (user) => {
   }
   lockUI();
 });
+
+const cachedEmail = localStorage.getItem(ADMIN_EMAIL_KEY);
+if (emailInput && cachedEmail) {
+  emailInput.value = cachedEmail;
+}
 
 updateTotal();
 

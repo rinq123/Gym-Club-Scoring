@@ -122,6 +122,11 @@ body.is-locked {
   background: rgba(15, 15, 25, 0.8);
   color: #f8f7ff;
   font-size: 1.2rem;
+  text-align: left;
+  letter-spacing: 0.02rem;
+}
+
+.auth-form .pin-input {
   text-align: center;
   letter-spacing: 0.4rem;
 }
@@ -386,18 +391,19 @@ table {
 
 .tag-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 1.25rem;
-  row-gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  column-gap: 0.85rem;
+  row-gap: 0.5rem;
 }
 
 .tag-options label {
   display: grid;
   grid-template-columns: 1.1rem 1fr;
   gap: 0.5rem;
-  align-items: start;
-  font-weight: 500;
+  align-items: center;
+  font-weight: 600;
   line-height: 1.2;
+  font-size: 0.95rem;
 }
 
 .form-actions {
@@ -422,6 +428,12 @@ table {
   box-shadow: 0 10px 25px rgba(244, 181, 63, 0.35);
 }
 
+.btn.danger {
+  background: #d9544f;
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(217, 84, 79, 0.35);
+}
+
 .btn.is-active {
   background: var(--accent);
   color: #1b1507;
@@ -436,6 +448,43 @@ table {
 
 .btn:hover {
   transform: translateY(-1px);
+}
+
+.help-panel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 5, 10, 0.75);
+  z-index: 9998;
+}
+
+.help-panel.hidden {
+  display: none;
+}
+
+.help-card {
+  width: min(680px, 94vw);
+  max-height: 80vh;
+  overflow: auto;
+  background: rgba(20, 20, 35, 0.95);
+  color: #f8f7ff;
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  padding: 2rem;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.help-body p {
+  margin: 0 0 0.9rem;
+  color: #d3d0e0;
 }
 
 .recent-list {
@@ -771,14 +820,14 @@ table {
 }
 
 .stream-performer-name {
-  font-size: clamp(3.6rem, 6.4vw, 7.5rem);
+  font-size: clamp(4.4rem, 7.4vw, 9rem);
   margin: 0.2rem 0 0.8rem;
 }
 
 .stream-performer-meta {
   color: #b7b3c9;
   margin: 0 0 2.5rem;
-  font-size: clamp(1.4rem, 2.4vw, 2.4rem);
+  font-size: clamp(1.8rem, 3vw, 3.2rem);
 }
 
 .stream-score {
@@ -793,11 +842,11 @@ table {
   letter-spacing: 2px;
   color: #c6a8ff;
   margin: 0;
-  font-size: clamp(1.3rem, 2vw, 2.1rem);
+  font-size: clamp(1.6rem, 2.4vw, 2.4rem);
 }
 
 .stream-score-value {
-  font-size: clamp(4.8rem, 8vw, 10rem);
+  font-size: clamp(6.2rem, 10vw, 12.5rem);
   margin: 0;
   color: #f8f7ff;
 }

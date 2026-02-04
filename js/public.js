@@ -40,11 +40,9 @@ const publicTitle = document.querySelector("#public-title");
 const scoreboardWrap = scoreboardCard ? scoreboardCard.querySelector(".table-wrap") : null;
 
 let settings = { ...DEFAULT_SETTINGS };
-let athletes = [];
 let scores = [];
 let scoreCache = new Map();
 let activeCompetitionId = null;
-let unsubAthletes = null;
 let unsubScores = null;
 
 function fillSelect(select, options, selectedValue) {
@@ -62,7 +60,7 @@ function fillSelect(select, options, selectedValue) {
 
 function populateFilters() {
   fillSelect(filterCategory, ["All", ...settings.categories], "All");
-  const clubs = [...new Set(athletes.map((athlete) => athlete.club))];
+  const clubs = [...new Set(scores.map((score) => score.athleteClub).filter(Boolean))];
   fillSelect(filterClub, ["All", ...clubs], "All");
 
   if (publicTitle) {
@@ -90,15 +88,12 @@ function renderScores() {
   tbody.innerHTML = "";
 
   const filteredScores = scores
-    .map((score) => {
-      const athlete = athletes.find((entry) => entry.id === score.athleteId);
-      return {
-        ...score,
-        athleteName: athlete ? athlete.name : "Unknown",
-        club: athlete ? athlete.club : "Unknown",
-        competitorNumber: athlete ? athlete.competitorNumber : "--"
-      };
-    })
+    .map((score) => ({
+      ...score,
+      athleteName: score.athleteName || "Unknown",
+      club: score.athleteClub || "Unknown",
+      competitorNumber: score.competitorNumber || "--"
+    }))
     .filter((score) => (filterCategory.value === "All" ? true : score.category === filterCategory.value))
     .filter((score) => (filterClub.value === "All" ? true : score.club === filterClub.value))
     .sort((a, b) => b.total - a.total);
@@ -197,29 +192,17 @@ onSnapshot(settingsRef, (snap) => {
 
 function bindCompetition(competitionId) {
   if (!competitionId) {
-    athletes = [];
     scores = [];
     renderAll();
     return;
   }
-  athletes = [];
   scores = [];
   renderAll();
   triggerUpdating();
-  if (unsubAthletes) {
-    unsubAthletes();
-  }
   if (unsubScores) {
     unsubScores();
   }
-  const athletesCol = collection(db, "competitions", competitionId, "athletes");
   const scoresCol = collection(db, "competitions", competitionId, "scores");
-
-  unsubAthletes = onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
-    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    populateFilters();
-    renderAll();
-  });
 
   unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));

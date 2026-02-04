@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=24">
+        <link rel="stylesheet" href="css/styles.css?v=25">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -14,7 +14,8 @@
                 <h2 class="auth-title">Enter PIN</h2>
                 <p class="auth-subtitle">Judges and admins only</p>
                 <form id="pin-form" class="auth-form">
-                    <input id="pin-input" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="****" maxlength="6" required>
+                    <input id="email-input" type="email" autocomplete="username" placeholder="Admin email" required>
+                    <input id="pin-input" class="pin-input" type="password" inputmode="numeric" autocomplete="current-password" placeholder="****" maxlength="6" required>
                     <button type="submit" class="btn primary">Unlock</button>
                 </form>
                 <p id="pin-error" class="auth-error hidden">Incorrect PIN.</p>
@@ -29,6 +30,7 @@
                     </div>
                     <div class="header-actions">
                         <p class="context-pill">Score Entry</p>
+                        <button type="button" class="btn ghost" id="help-toggle">Admin Help</button>
                         <img class="logo-mark" src="img/eclipselogo.png" alt="Eclipse Invitational logo">
                     </div>
                 </div>
@@ -63,7 +65,7 @@
                         <span class="badge">Quick actions</span>
                     </div>
                     <div class="form-actions">
-                        <button type="button" id="reset-demo" class="btn ghost">Reset Demo Data</button>
+                        <button type="button" id="reset-demo" class="btn danger">Clear Competition Data</button>
                         <button type="button" id="lock-admin" class="btn ghost">Lock Admin</button>
                     </div>
                 </section>
@@ -153,6 +155,22 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=22"></script>
+        <div id="help-panel" class="help-panel hidden">
+            <div class="help-card">
+                <div class="help-header">
+                    <h2>Admin Quick Guide</h2>
+                    <button type="button" class="btn ghost" id="help-close">Close</button>
+                </div>
+                <div class="help-body">
+                    <p><strong>Competition Manager:</strong> Use Set Active to switch what the public sees. Create New makes a fresh competition. Archive Current freezes the old one and creates a new active competition.</p>
+                    <p><strong>Manage Athletes / Groups:</strong> Add competitor number, club, and tags. Edit to fix typos. Deleting a roster entry removes their scores.</p>
+                    <p><strong>Enter Score:</strong> Pick a category, select a performer, then enter execution + difficulty. Use Update Score to correct mistakes.</p>
+                    <p><strong>Stream Controls:</strong> Choose a mode (Welcome, Idle, Scoreboard, Mix, Announcement) and select the current performer when spotlighting.</p>
+                    <p><strong>Lock Admin:</strong> Use this when stepping away to re‑enable the PIN gate.</p>
+                    <p><strong>Clear Competition Data:</strong> Wipes athletes and scores for the active competition. Use only when starting fresh.</p>
+                </div>
+            </div>
+        </div>
+        <script type="module" src="js/admin.js?v=23"></script>
     </body>
 </html> 

@@ -27,7 +27,16 @@ const DEFAULT_SETTINGS = {
     "IDP 2"
   ]
 };
-const DEFAULT_STREAM_STATE = { mode: "welcome", performerId: null, mixSeconds: 20 };
+const DEFAULT_STREAM_STATE = {
+  mode: "welcome",
+  performerId: null,
+  performerName: null,
+  performerClub: null,
+  performerNumber: null,
+  performerCategory: null,
+  performerGrade: null,
+  mixSeconds: 20
+};
 
 const settingsRef = doc(db, "settingsPublic", "current");
 
@@ -48,7 +57,6 @@ const scoreRows = document.querySelector("#stream-score-rows");
 const scoreboardWrap = scoreboardPanel ? scoreboardPanel.querySelector(".table-wrap") : null;
 
 let settings = { ...DEFAULT_SETTINGS };
-let athletes = [];
 let scores = [];
 let streamState = { ...DEFAULT_STREAM_STATE };
 let mixTimer = null;
@@ -56,7 +64,6 @@ let mixPhase = "idle";
 let lastMixSeconds = null;
 let scoreCache = new Map();
 let activeCompetitionId = null;
-let unsubAthletes = null;
 let unsubScores = null;
 let unsubStream = null;
 
@@ -79,13 +86,10 @@ function toDate(value) {
 function renderScoreboard() {
   scoreRows.innerHTML = "";
   const rows = scores
-    .map((score) => {
-      const athlete = athletes.find((entry) => entry.id === score.athleteId);
-      return {
-        ...score,
-        athleteName: athlete ? athlete.name : "Unknown"
-      };
-    })
+    .map((score) => ({
+      ...score,
+      athleteName: score.athleteName || "Unknown"
+    }))
     .sort((a, b) => b.total - a.total);
 
   if (!rows.length) {
@@ -117,20 +121,18 @@ function renderScoreboard() {
   scoreCache = nextCache;
 }
 function renderSpotlight() {
-  const performerId = streamState.performerId;
-  const athlete = athletes.find((entry) => entry.id === performerId);
-  if (!athlete) {
+  if (!streamState.performerId || !streamState.performerName) {
     performerName.textContent = "No performer selected";
     performerClub.textContent = "Club: --";
     performerScore.textContent = "--";
     return;
   }
 
-  performerName.textContent = athlete.name;
-  const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
-  performerClub.textContent = `Club: ${athlete.club} • Comp ${compNumber}`;
+  performerName.textContent = streamState.performerName;
+  const compNumber = streamState.performerNumber ? `#${streamState.performerNumber}` : "No #";
+  performerClub.textContent = `Club: ${streamState.performerClub || "--"} • Comp ${compNumber}`;
   const latestScore = scores
-    .filter((score) => score.athleteId === athlete.id)
+    .filter((score) => score.athleteId === streamState.performerId)
     .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];
   performerScore.textContent = latestScore ? latestScore.total.toFixed(3) : "--";
 }
@@ -138,9 +140,8 @@ function renderSpotlight() {
 function renderStream() {
   const mode = streamState.mode || "idle";
   const mixSeconds = streamState.mixSeconds || 20;
-  const performer = athletes.find((entry) => entry.id === streamState.performerId);
-  const categoryTag = performer?.categoryTags?.[0];
-  const gradeTag = performer?.gradeTags?.[0];
+  const categoryTag = streamState.performerCategory;
+  const gradeTag = streamState.performerGrade;
 
   if (scores.length) {
     const latest = scores.reduce((max, score) => {
@@ -215,34 +216,23 @@ function triggerUpdating() {
 
 function bindCompetition(competitionId) {
   if (!competitionId) {
-    athletes = [];
     scores = [];
     streamState = { ...DEFAULT_STREAM_STATE };
     renderStream();
     return;
   }
-  athletes = [];
   scores = [];
   streamState = { ...DEFAULT_STREAM_STATE };
   triggerUpdating();
   renderStream();
-  if (unsubAthletes) {
-    unsubAthletes();
-  }
   if (unsubScores) {
     unsubScores();
   }
   if (unsubStream) {
     unsubStream();
   }
-  const athletesCol = collection(db, "competitions", competitionId, "athletes");
   const scoresCol = collection(db, "competitions", competitionId, "scores");
   const streamRef = doc(db, "competitions", competitionId, "streamState", "current");
-
-  unsubAthletes = onSnapshot(query(athletesCol, orderBy("name")), (snap) => {
-    athletes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    renderStream();
-  });
 
   unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));

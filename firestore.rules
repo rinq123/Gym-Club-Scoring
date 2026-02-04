@@ -20,18 +20,15 @@ service cloud.firestore {
     }
 
     match /athletes/{doc} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     match /scores/{doc} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     match /streamState/{doc} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     match /competitions/{competitionId} {
@@ -44,7 +41,7 @@ service cloud.firestore {
       }
 
       match /athletes/{doc} {
-        allow read: if true;
+        allow read: if isAdmin();
         allow write: if isAdmin();
       }
 
