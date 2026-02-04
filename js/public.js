@@ -88,19 +88,38 @@ function renderScores() {
   tbody.innerHTML = "";
 
   const filteredScores = scores
-    .map((score) => ({
-      ...score,
-      athleteName: score.athleteName || "Unknown",
-      club: score.athleteClub || "Unknown",
-      competitorNumber: score.competitorNumber || "--"
-    }))
+    .map((score) => {
+      const totalValue = Number(score.total);
+      return {
+        ...score,
+        athleteName: score.athleteName || "Unknown",
+        club: score.athleteClub || "Unknown",
+        competitorNumber: score.competitorNumber || "--",
+        artistry: score.artistry,
+        execution: score.execution,
+        difficulty: score.difficulty,
+        penalties: score.penalties,
+        totalValue: Number.isFinite(totalValue) ? totalValue : 0
+      };
+    })
     .filter((score) => (filterCategory.value === "All" ? true : score.category === filterCategory.value))
     .filter((score) => (filterClub.value === "All" ? true : score.club === filterClub.value))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => b.totalValue - a.totalValue);
+
+  const formatScore = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return "--";
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return "--";
+    }
+    return numeric.toFixed(3);
+  };
 
   if (!filteredScores.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="5">No scores yet for this view.</td>`;
+    row.innerHTML = `<td colspan="11">No scores yet for this view.</td>`;
     tbody.appendChild(row);
     scoreCache = new Map();
     return;
@@ -121,7 +140,13 @@ function renderScores() {
       <td>${score.athleteName}</td>
       <td>${score.competitorNumber || "--"}</td>
       <td>${score.club}</td>
-      <td>${score.total.toFixed(3)}</td>
+      <td>${score.category || "--"}</td>
+      <td>${score.grade || "--"}</td>
+      <td>${formatScore(score.artistry)}</td>
+      <td>${formatScore(score.execution)}</td>
+      <td>${formatScore(score.difficulty)}</td>
+      <td>${formatScore(score.penalties)}</td>
+      <td>${formatScore(score.total)}</td>
     `;
     tbody.appendChild(row);
     nextCache.set(score.id, score.total);

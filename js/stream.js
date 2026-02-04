@@ -151,19 +151,38 @@ function schedulePagination(totalPages) {
 function renderScoreboard(isPaging = false) {
   scoreRows.innerHTML = "";
   const rows = scores
-    .map((score) => ({
-      ...score,
-      athleteName: score.athleteName || "Unknown",
-      athleteClub: score.athleteClub || "Unknown",
-      competitorNumber: score.competitorNumber || "--",
-      category: score.category || "--",
-      grade: score.grade || "--"
-    }))
-    .sort((a, b) => b.total - a.total);
+    .map((score) => {
+      const totalValue = Number(score.total);
+      return {
+        ...score,
+        athleteName: score.athleteName || "Unknown",
+        athleteClub: score.athleteClub || "Unknown",
+        competitorNumber: score.competitorNumber || "--",
+        category: score.category || "--",
+        grade: score.grade || "--",
+        artistry: score.artistry,
+        execution: score.execution,
+        difficulty: score.difficulty,
+        penalties: score.penalties,
+        totalValue: Number.isFinite(totalValue) ? totalValue : 0
+      };
+    })
+    .sort((a, b) => b.totalValue - a.totalValue);
+
+  const formatScore = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return "--";
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return "--";
+    }
+    return numeric.toFixed(3);
+  };
 
   if (!rows.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="3">No scores yet.</td>`;
+    row.innerHTML = `<td colspan="11">No scores yet.</td>`;
     scoreRows.appendChild(row);
     scoreCache = new Map();
     stopPagination();
@@ -197,7 +216,11 @@ function renderScoreboard(isPaging = false) {
       <td>${score.athleteClub}</td>
       <td>${score.category}</td>
       <td>${score.grade || "--"}</td>
-      <td>${score.total.toFixed(3)}</td>
+      <td>${formatScore(score.artistry)}</td>
+      <td>${formatScore(score.execution)}</td>
+      <td>${formatScore(score.difficulty)}</td>
+      <td>${formatScore(score.penalties)}</td>
+      <td>${formatScore(score.total)}</td>
     `;
     scoreRows.appendChild(row);
     nextCache.set(score.id, score.total);
@@ -217,8 +240,8 @@ function renderSpotlight() {
   }
 
   performerName.textContent = streamState.performerName;
-  const compNumber = streamState.performerNumber ? `#${streamState.performerNumber}` : "No #";
-  performerClub.textContent = `Club: ${streamState.performerClub || "--"} • Comp ${compNumber}`;
+  const compNumber = streamState.performerNumber ? `Comp No. ${streamState.performerNumber}` : "Comp No. --";
+  performerClub.textContent = `Club: ${streamState.performerClub || "--"} • ${compNumber}`;
   const latestScore = scores
     .filter((score) => score.athleteId === streamState.performerId)
     .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];

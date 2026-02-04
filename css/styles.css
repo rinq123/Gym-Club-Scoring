@@ -385,6 +385,20 @@ table {
   padding: calc(0.8rem * var(--table-scale, 1)) calc(0.9rem * var(--table-scale, 1));
 }
 
+.page-public .score-table {
+  font-size: 0.9rem;
+}
+
+.page-public .score-table th,
+.page-public .score-table td {
+  padding: 0.6rem 0.7rem;
+  white-space: nowrap;
+}
+
+.page-public .score-table td:nth-child(2) {
+  white-space: normal;
+}
+
 .site-footer {
   margin-top: auto;
   padding: 1rem 0 2rem;
@@ -682,17 +696,64 @@ table {
 }
 
 .stream-scoreboard .display-table {
-  font-size: clamp(1rem, 1.6vw, 1.6rem);
+  font-size: clamp(0.9rem, 1.3vw, 1.4rem);
+  table-layout: fixed;
 }
 
 .stream-scoreboard .display-table th,
 .stream-scoreboard .display-table td {
-  padding: 0.85rem 1rem;
+  padding: 0.7rem 0.8rem;
   white-space: nowrap;
 }
 
 .stream-scoreboard .display-table td:nth-child(2) {
   white-space: normal;
+}
+
+.stream-scoreboard .display-table th:nth-child(1),
+.stream-scoreboard .display-table td:nth-child(1) {
+  width: 5%;
+}
+
+.stream-scoreboard .display-table th:nth-child(2),
+.stream-scoreboard .display-table td:nth-child(2) {
+  width: 20%;
+}
+
+.stream-scoreboard .display-table th:nth-child(3),
+.stream-scoreboard .display-table td:nth-child(3) {
+  width: 8%;
+}
+
+.stream-scoreboard .display-table th:nth-child(4),
+.stream-scoreboard .display-table td:nth-child(4) {
+  width: 12%;
+}
+
+.stream-scoreboard .display-table th:nth-child(5),
+.stream-scoreboard .display-table td:nth-child(5) {
+  width: 12%;
+}
+
+.stream-scoreboard .display-table th:nth-child(6),
+.stream-scoreboard .display-table td:nth-child(6) {
+  width: 8%;
+}
+
+.stream-scoreboard .display-table th:nth-child(7),
+.stream-scoreboard .display-table td:nth-child(7),
+.stream-scoreboard .display-table th:nth-child(8),
+.stream-scoreboard .display-table td:nth-child(8),
+.stream-scoreboard .display-table th:nth-child(9),
+.stream-scoreboard .display-table td:nth-child(9),
+.stream-scoreboard .display-table th:nth-child(10),
+.stream-scoreboard .display-table td:nth-child(10) {
+  width: 6%;
+}
+
+.stream-scoreboard .display-table th:nth-child(11),
+.stream-scoreboard .display-table td:nth-child(11) {
+  width: 9%;
 }
 
 .display-table thead th {

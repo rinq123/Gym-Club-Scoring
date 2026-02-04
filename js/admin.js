@@ -36,6 +36,10 @@ const DEFAULT_SETTINGS = {
   ]
 };
 
+const artistryInput = document.querySelector('[name="artistry"]');
+const executionInput = document.querySelector('[name="execution"]');
+const difficultyInput = document.querySelector('[name="difficulty"]');
+const penaltiesInput = document.querySelector('[name="penalties"]');
 const totalInput = document.querySelector('[name="total"]');
 const categorySelect = document.querySelector("#category");
 const athleteSelect = document.querySelector("#athlete");
@@ -525,7 +529,7 @@ function renderAthleteOptions() {
   if (!eligible.length) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "No eligible athletes/groups";
+    option.textContent = "No eligible gymnast(s)";
     option.disabled = true;
     option.selected = true;
     athleteSelect.appendChild(option);
@@ -535,7 +539,7 @@ function renderAthleteOptions() {
   eligible.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
-    const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    const compNumber = athlete.competitorNumber ? `Comp No. ${athlete.competitorNumber}` : "Comp No. --";
     option.textContent = `${athlete.name} (${compNumber}, ${athlete.club})`;
     athleteSelect.appendChild(option);
   });
@@ -551,7 +555,7 @@ function renderStreamPerformerOptions() {
   athletes.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
-    const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    const compNumber = athlete.competitorNumber ? `Comp No. ${athlete.competitorNumber}` : "Comp No. --";
     option.textContent = `${athlete.name} (${compNumber}, ${athlete.club})`;
     streamPerformer.appendChild(option);
   });
@@ -590,7 +594,7 @@ function renderAthleteList() {
     const text = document.createElement("span");
     const categoryLabel = athlete.categoryTags.join(", ") || "None";
     const gradeLabel = athlete.gradeTags ? athlete.gradeTags.join(", ") : "None";
-    const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    const compNumber = athlete.competitorNumber ? `Comp No. ${athlete.competitorNumber}` : "Comp No. --";
     text.textContent = `${athlete.name} - ${compNumber} - ${athlete.club} | ${categoryLabel} | ${gradeLabel}`;
     const actions = document.createElement("div");
     actions.className = "list-actions";
@@ -642,8 +646,10 @@ function renderRecent() {
     const text = document.createElement("span");
     const athleteName = score.athleteName || athletes.find((entry) => entry.id === score.athleteId)?.name || "Unknown";
     const compNumberValue = score.competitorNumber || athletes.find((entry) => entry.id === score.athleteId)?.competitorNumber;
-    const compNumber = compNumberValue ? `#${compNumberValue}` : "No #";
-    text.textContent = `${athleteName} ${compNumber} - ${score.category} - ${score.total.toFixed(3)}`;
+    const compNumber = compNumberValue ? `Comp No. ${compNumberValue}` : "Comp No. --";
+    const totalNumeric = Number(score.total);
+    const totalLabel = Number.isFinite(totalNumeric) ? totalNumeric.toFixed(3) : "--";
+    text.textContent = `${athleteName} ${compNumber} - ${score.category} - ${totalLabel}`;
     const actions = document.createElement("div");
     actions.className = "list-actions";
     const editBtn = document.createElement("button");
@@ -673,7 +679,7 @@ function setScoreFormMode(isEditing) {
 }
 
 function setAthleteFormMode(isEditing) {
-  athleteSubmitBtn.textContent = isEditing ? "Update Athlete/Group" : "Add Athlete/Group";
+  athleteSubmitBtn.textContent = isEditing ? "Update Gymnast(s)" : "Add Gymnast(s)";
   athleteCancelBtn.classList.toggle("hidden", !isEditing);
   athleteEditingLabel.classList.toggle("hidden", !isEditing);
 }
@@ -710,7 +716,7 @@ function startAthleteEdit(athlete) {
     input.checked = athlete.gradeTags?.includes(input.value) || false;
   });
   setAthleteFormMode(true);
-  athleteEditingLabel.textContent = `Editing athlete/group: ${athlete.name}`;
+  athleteEditingLabel.textContent = `Editing gymnast(s): ${athlete.name}`;
 }
 
 function clearAthleteEdit() {
@@ -725,7 +731,15 @@ function startScoreEdit(score) {
   categorySelect.value = score.category;
   renderAthleteOptions();
   athleteSelect.value = score.athleteId;
-  totalInput.value = score.total?.toFixed ? score.total.toFixed(3) : score.total;
+  const formatField = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(3) : "";
+  };
+  artistryInput.value = formatField(score.artistry);
+  executionInput.value = formatField(score.execution);
+  difficultyInput.value = formatField(score.difficulty);
+  penaltiesInput.value = formatField(score.penalties);
+  totalInput.value = formatField(score.total);
   setScoreFormMode(true);
   const athlete = athletes.find((entry) => entry.id === score.athleteId);
   const athleteName = athlete ? athlete.name : "Unknown";
@@ -770,15 +784,28 @@ form.addEventListener("submit", async (event) => {
   if (isSavingScore) {
     return;
   }
+  const artistryValue = parseFloat(artistryInput.value);
+  const executionValue = parseFloat(executionInput.value);
+  const difficultyValue = parseFloat(difficultyInput.value);
+  const penaltiesValue = parseFloat(penaltiesInput.value);
   const totalValue = parseFloat(totalInput.value);
   const category = categorySelect.value;
   const athleteId = athleteSelect.value;
   const athlete = athletes.find((entry) => entry.id === athleteId);
 
-  if (!athleteId || Number.isNaN(totalValue)) {
+  if (!athleteId
+    || Number.isNaN(artistryValue)
+    || Number.isNaN(executionValue)
+    || Number.isNaN(difficultyValue)
+    || Number.isNaN(penaltiesValue)
+    || Number.isNaN(totalValue)) {
     return;
   }
 
+  const artistry = parseFloat(artistryValue.toFixed(3));
+  const execution = parseFloat(executionValue.toFixed(3));
+  const difficulty = parseFloat(difficultyValue.toFixed(3));
+  const penalties = parseFloat(penaltiesValue.toFixed(3));
   const total = parseFloat(totalValue.toFixed(3));
   const grade = athlete?.gradeTags?.length === 1 ? athlete.gradeTags[0] : null;
   const athleteName = athlete?.name || "Unknown";
@@ -796,6 +823,10 @@ form.addEventListener("submit", async (event) => {
         athleteName,
         athleteClub,
         competitorNumber,
+        artistry,
+        execution,
+        difficulty,
+        penalties,
         total,
         timestamp: serverTimestamp()
       }, { merge: true });
@@ -811,11 +842,19 @@ form.addEventListener("submit", async (event) => {
       athleteName,
       athleteClub,
       competitorNumber,
+      artistry,
+      execution,
+      difficulty,
+      penalties,
       total,
       timestamp: serverTimestamp()
     });
 
     markScorePending(athleteId, category);
+    artistryInput.value = "";
+    executionInput.value = "";
+    difficultyInput.value = "";
+    penaltiesInput.value = "";
     totalInput.value = "";
     renderAthleteOptions();
     const firstOption = athleteSelect.querySelector("option:not([disabled])");
@@ -834,6 +873,10 @@ form.addEventListener("reset", (event) => {
     clearScoreEdit();
     return;
   }
+  artistryInput.value = "";
+  executionInput.value = "";
+  difficultyInput.value = "";
+  penaltiesInput.value = "";
   totalInput.value = "";
 });
 
@@ -864,7 +907,7 @@ streamButtons.forEach((button) => {
 });
 
 resetDemoBtn.addEventListener("click", async () => {
-  if (!window.confirm("Clear all competition data? This deletes athletes and scores for the active competition.")) {
+  if (!window.confirm("Clear all competition data? This deletes gymnast(s) and scores for the active competition.")) {
     return;
   }
   if (!activeCompetitionId || !activeAthletesCol || !activeScoresCol || !activeStreamRef) {
