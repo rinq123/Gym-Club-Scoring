@@ -12,6 +12,8 @@
   --accent-dark: #d6931c;
   --navy: #0b1f2a;
   --teal: #1c6e7b;
+  --neon: #7c4dff;
+  --neon-soft: rgba(124, 77, 255, 0.35);
   --shadow: 0 16px 45px rgba(14, 28, 38, 0.12);
   --radius: 16px;
   --font-body: "Trebuchet MS", "Gill Sans", "Segoe UI", sans-serif;
@@ -144,6 +146,24 @@ body.is-locked {
   background: rgba(20, 20, 35, 0.9);
   color: #f8f7ff;
   border-bottom: 1px solid rgba(124, 77, 255, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgba(124, 77, 255, 0.35) 45%, transparent 100%);
+  opacity: 0.65;
+  transform: translateX(-60%);
+  animation: neonSweep 8s linear infinite;
+  pointer-events: none;
+}
+
+.site-header .header-inner {
+  position: relative;
+  z-index: 1;
 }
 
 .site-header .btn.ghost {
@@ -215,6 +235,11 @@ body.is-locked {
   box-shadow: var(--shadow);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.page-public .card {
+  border: 1px solid rgba(124, 77, 255, 0.2);
+  box-shadow: 0 18px 50px rgba(8, 5, 18, 0.45), 0 0 20px rgba(124, 77, 255, 0.12);
 }
 
 .section-title {
@@ -583,6 +608,24 @@ table {
   border-radius: 18px;
   background: rgba(20, 20, 35, 0.9);
   box-shadow: 0 24px 60px rgba(8, 5, 18, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.display-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgba(124, 77, 255, 0.35) 45%, transparent 100%);
+  opacity: 0.6;
+  transform: translateX(-60%);
+  animation: neonSweep 7s linear infinite;
+  pointer-events: none;
+}
+
+.display-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .display-header .logo-mark {
@@ -621,6 +664,7 @@ table {
   color: #fff;
   font-weight: 700;
   letter-spacing: 1px;
+  animation: livePulse 2.4s ease-in-out infinite;
 }
 
 .display-main {
@@ -803,7 +847,8 @@ table {
   padding: 3rem;
   border-radius: 20px;
   background: rgba(20, 20, 35, 0.9);
-  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
+  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45), 0 0 25px rgba(124, 77, 255, 0.18);
+  border: 1px solid rgba(124, 77, 255, 0.18);
 }
 
 .stream-welcome,
@@ -814,7 +859,8 @@ table {
   padding: 3.5rem;
   border-radius: 20px;
   background: rgba(20, 20, 35, 0.9);
-  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
+  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45), 0 0 25px rgba(124, 77, 255, 0.18);
+  border: 1px solid rgba(124, 77, 255, 0.18);
   position: relative;
   overflow: hidden;
 }
@@ -849,7 +895,8 @@ table {
   padding: 2.5rem;
   border-radius: 20px;
   background: rgba(20, 20, 35, 0.9);
-  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
+  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45), 0 0 28px rgba(124, 77, 255, 0.2);
+  border: 1px solid rgba(124, 77, 255, 0.22);
   text-align: center;
 }
 
@@ -896,7 +943,8 @@ table {
   padding: 1.5rem;
   border-radius: 20px;
   background: rgba(20, 20, 35, 0.9);
-  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
+  box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45), 0 0 28px rgba(124, 77, 255, 0.2);
+  border: 1px solid rgba(124, 77, 255, 0.22);
 }
 
 .stream-scoreboard .section-title {
@@ -930,26 +978,74 @@ table {
 }
 
 .stream-scoreboard .score-table tbody tr.is-updated {
-  background: rgba(124, 77, 255, 0.35);
-  box-shadow: inset 0 0 0 1px rgba(198, 168, 255, 0.35);
+  background: rgba(124, 77, 255, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(198, 168, 255, 0.6), 0 0 18px rgba(124, 77, 255, 0.45);
 }
 
 .stream-panel.is-active.stream-idle {
   display: grid;
+  animation: panelFadeUp 0.6s ease;
 }
 
 .stream-panel.is-active.stream-welcome,
 .stream-panel.is-active.stream-announcement {
   display: grid;
+  animation: panelFadeUp 0.6s ease;
 }
 
 .stream-panel.is-active.stream-spotlight {
   display: grid;
   place-items: center;
+  animation: panelFadeUp 0.6s ease;
 }
 
 .stream-panel.is-active.stream-scoreboard {
   display: block;
+  animation: panelFadeUp 0.6s ease;
+}
+
+.table-wrap.is-page-flip {
+  animation: pageFlip 0.6s ease;
+}
+
+@keyframes panelFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes neonSweep {
+  0% {
+    transform: translateX(-60%);
+  }
+  100% {
+    transform: translateX(60%);
+  }
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    box-shadow: 0 0 18px rgba(124, 77, 255, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(178, 133, 255, 0.85);
+  }
+}
+
+@keyframes pageFlip {
+  0% {
+    opacity: 0.2;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (min-width: 768px) {

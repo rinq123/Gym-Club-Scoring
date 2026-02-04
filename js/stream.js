@@ -66,6 +66,10 @@ let scoreCache = new Map();
 let activeCompetitionId = null;
 let unsubScores = null;
 let unsubStream = null;
+let pageIndex = 0;
+let pageTimer = null;
+let lastPageCount = 1;
+let paginationEnabled = true;
 
 function setPanel(panel) {
   [welcomePanel, idlePanel, announcementPanel, spotlightPanel, scoreboardPanel].forEach((section) => {
@@ -83,7 +87,68 @@ function toDate(value) {
   return new Date(value);
 }
 
-function renderScoreboard() {
+function getRowsPerPage() {
+  const height = window.innerHeight || 1080;
+  if (height >= 1200) {
+    return 14;
+  }
+  if (height >= 1000) {
+    return 12;
+  }
+  if (height >= 900) {
+    return 11;
+  }
+  return 9;
+}
+
+function triggerPageFlip() {
+  if (!scoreboardWrap) {
+    return;
+  }
+  scoreboardWrap.classList.add("is-page-flip");
+  clearTimeout(triggerPageFlip.timer);
+  triggerPageFlip.timer = setTimeout(() => {
+    scoreboardWrap.classList.remove("is-page-flip");
+  }, 600);
+}
+
+function stopPagination() {
+  if (pageTimer) {
+    clearInterval(pageTimer);
+    pageTimer = null;
+  }
+}
+
+function setPaginationEnabled(enabled) {
+  if (paginationEnabled === enabled) {
+    return;
+  }
+  paginationEnabled = enabled;
+  if (!enabled) {
+    stopPagination();
+  } else {
+    pageIndex = 0;
+  }
+}
+
+function schedulePagination(totalPages) {
+  if (!paginationEnabled || totalPages <= 1) {
+    stopPagination();
+    lastPageCount = totalPages;
+    return;
+  }
+  if (pageTimer && lastPageCount === totalPages) {
+    return;
+  }
+  stopPagination();
+  lastPageCount = totalPages;
+  pageTimer = setInterval(() => {
+    pageIndex = (pageIndex + 1) % totalPages;
+    renderScoreboard(true);
+  }, 7000);
+}
+
+function renderScoreboard(isPaging = false) {
   scoreRows.innerHTML = "";
   const rows = scores
     .map((score) => ({
@@ -97,11 +162,22 @@ function renderScoreboard() {
     row.innerHTML = `<td colspan="3">No scores yet.</td>`;
     scoreRows.appendChild(row);
     scoreCache = new Map();
+    stopPagination();
     return;
   }
 
+  const rowsPerPage = getRowsPerPage();
+  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  if (!paginationEnabled) {
+    pageIndex = 0;
+  } else if (pageIndex >= totalPages) {
+    pageIndex = 0;
+  }
+  const start = pageIndex * rowsPerPage;
+  const pageRows = rows.slice(start, start + rowsPerPage);
+
   const nextCache = new Map();
-  rows.forEach((score, index) => {
+  pageRows.forEach((score, index) => {
     const row = document.createElement("tr");
     const cachedTotal = scoreCache.get(score.id);
     if (cachedTotal === undefined || cachedTotal !== score.total) {
@@ -111,7 +187,7 @@ function renderScoreboard() {
       }, 2000);
     }
     row.innerHTML = `
-      <td>${index + 1}</td>
+      <td>${start + index + 1}</td>
       <td>${score.athleteName}</td>
       <td>${score.total.toFixed(3)}</td>
     `;
@@ -119,6 +195,10 @@ function renderScoreboard() {
     nextCache.set(score.id, score.total);
   });
   scoreCache = nextCache;
+  schedulePagination(totalPages);
+  if (isPaging) {
+    triggerPageFlip();
+  }
 }
 function renderSpotlight() {
   if (!streamState.performerId || !streamState.performerName) {
@@ -166,6 +246,8 @@ function renderStream() {
   } else {
     setPanel(idlePanel);
   }
+
+  setPaginationEnabled(mode === "scoreboard" || mode === "mix");
 
   if (mode === "spotlight") {
     const details = [categoryTag, gradeTag].filter(Boolean).join(" • ");
@@ -218,11 +300,13 @@ function bindCompetition(competitionId) {
   if (!competitionId) {
     scores = [];
     streamState = { ...DEFAULT_STREAM_STATE };
+    pageIndex = 0;
     renderStream();
     return;
   }
   scores = [];
   streamState = { ...DEFAULT_STREAM_STATE };
+  pageIndex = 0;
   triggerUpdating();
   renderStream();
   if (unsubScores) {
@@ -236,6 +320,7 @@ function bindCompetition(competitionId) {
 
   unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    pageIndex = 0;
     triggerUpdating();
     renderStream();
   });
