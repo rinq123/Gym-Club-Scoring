@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=25">
+        <link rel="stylesheet" href="css/styles.css?v=26">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -80,9 +80,7 @@
                         <label class="field">Athlete / Group
                             <select name="athlete" id="athlete"></select>
                         </label>
-                        <label class="field">Execution<input type="number" step="0.001" name="execution" id="execution"></label>
-                        <label class="field">Difficulty<input type="number" step="0.001" name="difficulty" id="difficulty"></label>
-                        <label class="field">Total<input type="number" step="0.001" name="total" id="total" readonly></label>
+                        <label class="field">Total Score<input type="number" step="0.001" name="total" id="total"></label>
 
                         <div class="form-actions">
                             <button type="submit" class="btn primary" id="score-submit">Save Score</button>
@@ -164,13 +162,13 @@
                 <div class="help-body">
                     <p><strong>Competition Manager:</strong> Use Set Active to switch what the public sees. Create New makes a fresh competition. Archive Current freezes the old one and creates a new active competition.</p>
                     <p><strong>Manage Athletes / Groups:</strong> Add competitor number, club, and tags. Edit to fix typos. Deleting a roster entry removes their scores.</p>
-                    <p><strong>Enter Score:</strong> Pick a category, select a performer, then enter execution + difficulty. Use Update Score to correct mistakes.</p>
+                    <p><strong>Enter Score:</strong> Pick a category, select a performer, then enter the total score. Use Update Score to correct mistakes.</p>
                     <p><strong>Stream Controls:</strong> Choose a mode (Welcome, Idle, Scoreboard, Mix, Announcement) and select the current performer when spotlighting.</p>
                     <p><strong>Lock Admin:</strong> Use this when stepping away to re‑enable the PIN gate.</p>
                     <p><strong>Clear Competition Data:</strong> Wipes athletes and scores for the active competition. Use only when starting fresh.</p>
                 </div>
             </div>
         </div>
-        <script type="module" src="js/admin.js?v=23"></script>
+        <script type="module" src="js/admin.js?v=24"></script>
     </body>
 </html> 

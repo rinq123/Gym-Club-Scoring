@@ -36,8 +36,6 @@ const DEFAULT_SETTINGS = {
   ]
 };
 
-const execInput = document.querySelector('[name="execution"]');
-const diffInput = document.querySelector('[name="difficulty"]');
 const totalInput = document.querySelector('[name="total"]');
 const categorySelect = document.querySelector("#category");
 const athleteSelect = document.querySelector("#athlete");
@@ -594,12 +592,6 @@ function renderAthleteList() {
   });
 }
 
-function updateTotal() {
-  const e = parseFloat(execInput.value) || 0;
-  const d = parseFloat(diffInput.value) || 0;
-  totalInput.value = (e + d).toFixed(3);
-}
-
 function renderRecent() {
   recentList.innerHTML = "";
   const recentScores = [...scores].slice(0, 8);
@@ -679,9 +671,7 @@ function startScoreEdit(score) {
   categorySelect.value = score.category;
   renderAthleteOptions();
   athleteSelect.value = score.athleteId;
-  execInput.value = score.execution?.toFixed ? score.execution.toFixed(3) : score.execution;
-  diffInput.value = score.difficulty?.toFixed ? score.difficulty.toFixed(3) : score.difficulty;
-  updateTotal();
+  totalInput.value = score.total?.toFixed ? score.total.toFixed(3) : score.total;
   setScoreFormMode(true);
   const athlete = athletes.find((entry) => entry.id === score.athleteId);
   const athleteName = athlete ? athlete.name : "Unknown";
@@ -692,7 +682,6 @@ function clearScoreEdit() {
   editingScoreId = null;
   editingScore = null;
   form.reset();
-  updateTotal();
   setScoreFormMode(false);
   renderAthleteOptions();
 }
@@ -719,9 +708,6 @@ function toDate(value) {
   return new Date(value);
 }
 
-execInput.addEventListener("input", updateTotal);
-diffInput.addEventListener("input", updateTotal);
-
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!activeScoresCol) {
@@ -730,17 +716,16 @@ form.addEventListener("submit", async (event) => {
   if (isSavingScore) {
     return;
   }
-  const execution = parseFloat(execInput.value);
-  const difficulty = parseFloat(diffInput.value);
+  const totalValue = parseFloat(totalInput.value);
   const category = categorySelect.value;
   const athleteId = athleteSelect.value;
   const athlete = athletes.find((entry) => entry.id === athleteId);
 
-  if (!athleteId || Number.isNaN(execution) || Number.isNaN(difficulty)) {
+  if (!athleteId || Number.isNaN(totalValue)) {
     return;
   }
 
-  const total = parseFloat((execution + difficulty).toFixed(3));
+  const total = parseFloat(totalValue.toFixed(3));
   const grade = athlete?.gradeTags?.length === 1 ? athlete.gradeTags[0] : null;
   const athleteName = athlete?.name || "Unknown";
   const athleteClub = athlete?.club || "";
@@ -757,8 +742,6 @@ form.addEventListener("submit", async (event) => {
         athleteName,
         athleteClub,
         competitorNumber,
-        execution,
-        difficulty,
         total,
         timestamp: serverTimestamp()
       }, { merge: true });
@@ -773,14 +756,11 @@ form.addEventListener("submit", async (event) => {
       athleteName,
       athleteClub,
       competitorNumber,
-      execution,
-      difficulty,
       total,
       timestamp: serverTimestamp()
     });
 
     form.reset();
-    updateTotal();
   } finally {
     isSavingScore = false;
     scoreSubmitBtn.disabled = false;
@@ -793,7 +773,6 @@ form.addEventListener("reset", (event) => {
     clearScoreEdit();
     return;
   }
-  setTimeout(updateTotal, 0);
 });
 
 streamPerformer.addEventListener("change", async () => {
@@ -1027,7 +1006,6 @@ async function startAdminSession() {
     return;
   }
   subscriptionsStarted = true;
-  updateTotal();
   await ensureCompetitionSetup();
   if (activeCompetitionId) {
     bindActiveCompetition(activeCompetitionId);
@@ -1062,8 +1040,6 @@ const cachedEmail = localStorage.getItem(ADMIN_EMAIL_KEY);
 if (emailInput && cachedEmail) {
   emailInput.value = cachedEmail;
 }
-
-updateTotal();
 
 
 
