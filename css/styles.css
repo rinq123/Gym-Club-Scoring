@@ -1208,3 +1208,53 @@ table {
     align-items: flex-start;
   }
 }
+
+@media (max-width: 900px) {
+  .page-public .score-table {
+    min-width: 960px;
+    font-size: 0.85rem;
+  }
+
+  .page-public .score-table th,
+  .page-public .score-table td {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .page-public .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .refresh-wrap {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .refresh-hint {
+    width: 100%;
+  }
+
+  .page-public h1 {
+    font-size: clamp(1.7rem, 7vw, 2.4rem);
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-public .card {
+    padding: 1.1rem;
+  }
+}
