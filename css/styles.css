@@ -761,8 +761,6 @@ table {
   background: rgba(20, 20, 35, 0.9);
   box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45);
   text-align: center;
-  display: grid;
-  place-items: center;
 }
 
 .stream-section-label {
@@ -855,7 +853,11 @@ table {
   display: grid;
 }
 
-.stream-panel.is-active.stream-spotlight,
+.stream-panel.is-active.stream-spotlight {
+  display: grid;
+  place-items: center;
+}
+
 .stream-panel.is-active.stream-scoreboard {
   display: block;
 }
