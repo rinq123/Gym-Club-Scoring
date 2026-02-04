@@ -203,6 +203,18 @@ body.is-locked {
   justify-content: flex-end;
 }
 
+.refresh-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.refresh-hint {
+  font-size: 0.8rem;
+  color: rgba(248, 247, 255, 0.7);
+  white-space: nowrap;
+}
+
 .logo-mark {
   width: clamp(4rem, 6vw, 6rem);
   height: clamp(4rem, 6vw, 6rem);

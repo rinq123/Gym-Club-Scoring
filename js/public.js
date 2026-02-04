@@ -2,7 +2,8 @@ import { db } from "./firebase.js";
 import {
   collection,
   doc,
-  onSnapshot,
+  getDoc,
+  getDocs,
   query,
   orderBy
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
@@ -38,12 +39,15 @@ const lastUpdated = document.querySelector("#last-updated");
 const scoreboardCard = document.querySelector("#scoreboard");
 const publicTitle = document.querySelector("#public-title");
 const scoreboardWrap = scoreboardCard ? scoreboardCard.querySelector(".table-wrap") : null;
+const refreshButton = document.querySelector("#refresh-scores");
 
 let settings = { ...DEFAULT_SETTINGS };
 let scores = [];
 let scoreCache = new Map();
 let activeCompetitionId = null;
-let unsubScores = null;
+let isRefreshing = false;
+const SETTINGS_CACHE_KEY = "publicSettingsCache";
+const SCORES_CACHE_KEY = "publicScoresCache";
 
 function fillSelect(select, options, selectedValue) {
   select.innerHTML = "";
@@ -197,44 +201,82 @@ function renderAll() {
 filterCategory.addEventListener("change", renderAll);
 filterClub.addEventListener("change", renderAll);
 
-onSnapshot(settingsRef, (snap) => {
+async function loadSettings() {
+  const snap = await getDoc(settingsRef);
   if (!snap.exists()) {
     settings = { ...DEFAULT_SETTINGS };
-    populateFilters();
-    renderAll();
+    activeCompetitionId = null;
     return;
   }
   const data = snap.data();
   settings = { ...DEFAULT_SETTINGS, ...data };
-  const nextCompetitionId = data.activeCompetitionId || null;
-  if (nextCompetitionId && nextCompetitionId !== activeCompetitionId) {
-    activeCompetitionId = nextCompetitionId;
-    bindCompetition(activeCompetitionId);
-  }
-  populateFilters();
-  renderAll();
-});
-
-function bindCompetition(competitionId) {
-  if (!competitionId) {
-    scores = [];
-    renderAll();
-    return;
-  }
-  scores = [];
-  renderAll();
-  triggerUpdating();
-  if (unsubScores) {
-    unsubScores();
-  }
-  const scoresCol = collection(db, "competitions", competitionId, "scores");
-
-  unsubScores = onSnapshot(query(scoresCol, orderBy("timestamp", "desc")), (snap) => {
-    scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    triggerUpdating();
-    renderAll();
-  });
+  activeCompetitionId = data.activeCompetitionId || null;
 }
 
+async function loadScores(competitionId) {
+  if (!competitionId) {
+    scores = [];
+    return;
+  }
+  const scoresCol = collection(db, "competitions", competitionId, "scores");
+  const snap = await getDocs(query(scoresCol, orderBy("timestamp", "desc")));
+  scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+}
+
+function setRefreshing(state) {
+  isRefreshing = state;
+  if (refreshButton) {
+    refreshButton.disabled = state;
+    refreshButton.textContent = state ? "Refreshing..." : "Refresh";
+  }
+  if (state) {
+    triggerUpdating();
+  }
+}
+
+async function refreshAll() {
+  if (isRefreshing) {
+    return;
+  }
+  try {
+    setRefreshing(true);
+    await loadSettings();
+    await loadScores(activeCompetitionId);
+    try {
+      localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+      localStorage.setItem(SCORES_CACHE_KEY, JSON.stringify(scores));
+    } catch (storageError) {
+      console.warn("Unable to cache public scores", storageError);
+    }
+  } catch (error) {
+    console.error("Failed to refresh scores", error);
+  } finally {
+    populateFilters();
+    renderAll();
+    setRefreshing(false);
+  }
+}
+
+function loadCachedData() {
+  try {
+    const cachedSettings = localStorage.getItem(SETTINGS_CACHE_KEY);
+    const cachedScores = localStorage.getItem(SCORES_CACHE_KEY);
+    if (cachedSettings) {
+      settings = { ...DEFAULT_SETTINGS, ...JSON.parse(cachedSettings) };
+      activeCompetitionId = settings.activeCompetitionId || null;
+    }
+    if (cachedScores) {
+      scores = JSON.parse(cachedScores);
+    }
+  } catch (error) {
+    console.warn("Unable to read cached scores", error);
+  }
+}
+
+if (refreshButton) {
+  refreshButton.addEventListener("click", refreshAll);
+}
+
+loadCachedData();
 populateFilters();
 renderAll();
