@@ -266,6 +266,21 @@ body.is-locked {
   color: var(--ink);
 }
 
+.field.is-invalid::after {
+  content: attr(data-error);
+  display: block;
+  font-size: 0.8rem;
+  color: #e35a5a;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+.field.is-invalid input,
+.field.is-invalid select {
+  border-color: #e35a5a;
+  box-shadow: 0 0 0 2px rgba(227, 90, 90, 0.2);
+}
+
 label input,
 label select {
   width: 100%;
@@ -441,6 +456,20 @@ table {
   background: var(--surface-alt);
   border-radius: 12px;
   padding: 0.9rem;
+}
+
+.tag-group.is-invalid {
+  border: 1px solid rgba(227, 90, 90, 0.6);
+  box-shadow: 0 0 0 2px rgba(227, 90, 90, 0.18);
+}
+
+.tag-group.is-invalid::after {
+  content: attr(data-error);
+  display: block;
+  font-size: 0.8rem;
+  color: #e35a5a;
+  margin-top: 0.5rem;
+  font-weight: 600;
 }
 
 .tag-title {

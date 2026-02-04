@@ -142,6 +142,31 @@ function buildScoreKey(athleteId, category) {
   return `${athleteId}::${category}`;
 }
 
+function setFieldError(field, message) {
+  if (!field) {
+    return;
+  }
+  field.classList.add("is-invalid");
+  field.dataset.error = message;
+}
+
+function clearFieldError(field) {
+  if (!field) {
+    return;
+  }
+  field.classList.remove("is-invalid");
+  field.removeAttribute("data-error");
+}
+
+function clearFormErrors(container) {
+  if (!container) {
+    return;
+  }
+  container.querySelectorAll(".is-invalid").forEach((field) => {
+    clearFieldError(field);
+  });
+}
+
 function markScorePending(athleteId, category) {
   if (!athleteId || !category) {
     return;
@@ -784,6 +809,7 @@ form.addEventListener("submit", async (event) => {
   if (isSavingScore) {
     return;
   }
+  clearFormErrors(form);
   const artistryValue = parseFloat(artistryInput.value);
   const executionValue = parseFloat(executionInput.value);
   const difficultyValue = parseFloat(difficultyInput.value);
@@ -793,12 +819,37 @@ form.addEventListener("submit", async (event) => {
   const athleteId = athleteSelect.value;
   const athlete = athletes.find((entry) => entry.id === athleteId);
 
-  if (!athleteId
-    || Number.isNaN(artistryValue)
-    || Number.isNaN(executionValue)
-    || Number.isNaN(difficultyValue)
-    || Number.isNaN(penaltiesValue)
-    || Number.isNaN(totalValue)) {
+  let hasErrors = false;
+  if (!category) {
+    setFieldError(categorySelect.closest(".field"), "Select a category.");
+    hasErrors = true;
+  }
+  if (!athleteId) {
+    setFieldError(athleteSelect.closest(".field"), "Select gymnast(s).");
+    hasErrors = true;
+  }
+  if (Number.isNaN(artistryValue)) {
+    setFieldError(artistryInput.closest(".field"), "Enter artistry.");
+    hasErrors = true;
+  }
+  if (Number.isNaN(executionValue)) {
+    setFieldError(executionInput.closest(".field"), "Enter execution.");
+    hasErrors = true;
+  }
+  if (Number.isNaN(difficultyValue)) {
+    setFieldError(difficultyInput.closest(".field"), "Enter difficulty.");
+    hasErrors = true;
+  }
+  if (Number.isNaN(penaltiesValue)) {
+    setFieldError(penaltiesInput.closest(".field"), "Enter penalties.");
+    hasErrors = true;
+  }
+  if (Number.isNaN(totalValue)) {
+    setFieldError(totalInput.closest(".field"), "Enter total score.");
+    hasErrors = true;
+  }
+
+  if (hasErrors) {
     return;
   }
 
@@ -878,6 +929,7 @@ form.addEventListener("reset", (event) => {
   difficultyInput.value = "";
   penaltiesInput.value = "";
   totalInput.value = "";
+  clearFormErrors(form);
 });
 
 streamPerformer.addEventListener("change", async () => {
@@ -1022,13 +1074,36 @@ athleteForm.addEventListener("submit", async (event) => {
   if (isSavingAthlete) {
     return;
   }
+  clearFormErrors(athleteForm);
   const name = athleteNameInput.value.trim();
   const club = athleteClubInput.value.trim();
   const competitorNumber = athleteNumberInput.value.trim();
   const categoryTags = getSelectedTags(categoryTagsContainer);
   const gradeTags = getSelectedTags(gradeTagsContainer);
 
-  if (!name || !club || !competitorNumber || !categoryTags.length || !gradeTags.length) {
+  let hasErrors = false;
+  if (!name) {
+    setFieldError(athleteNameInput.closest(".field"), "Enter gymnast(s) name.");
+    hasErrors = true;
+  }
+  if (!club) {
+    setFieldError(athleteClubInput.closest(".field"), "Enter club.");
+    hasErrors = true;
+  }
+  if (!competitorNumber) {
+    setFieldError(athleteNumberInput.closest(".field"), "Enter Comp No.");
+    hasErrors = true;
+  }
+  if (categoryTags.length !== 1) {
+    setFieldError(categoryTagsContainer.closest(".tag-group"), "Select exactly one category.");
+    hasErrors = true;
+  }
+  if (gradeTags.length !== 1) {
+    setFieldError(gradeTagsContainer.closest(".tag-group"), "Select exactly one grade.");
+    hasErrors = true;
+  }
+
+  if (hasErrors) {
     return;
   }
 
@@ -1088,12 +1163,37 @@ athleteForm.addEventListener("submit", async (event) => {
 
 athleteCancelBtn.addEventListener("click", () => {
   clearAthleteEdit();
+  clearFormErrors(athleteForm);
 });
 
 categorySelect.addEventListener("change", renderAthleteOptions);
 
 enforceSingleCheck(categoryTagsContainer);
 enforceSingleCheck(gradeTagsContainer);
+
+form.addEventListener("input", (event) => {
+  const field = event.target.closest(".field");
+  if (field) {
+    clearFieldError(field);
+  }
+});
+
+athleteForm.addEventListener("input", (event) => {
+  const field = event.target.closest(".field");
+  if (field) {
+    clearFieldError(field);
+  }
+});
+
+athleteForm.addEventListener("change", (event) => {
+  if (event.target.type !== "checkbox") {
+    return;
+  }
+  const group = event.target.closest(".tag-group");
+  if (group) {
+    clearFieldError(group);
+  }
+});
 
 pinForm.addEventListener("submit", (event) => {
   event.preventDefault();
