@@ -681,6 +681,20 @@ table {
   padding: 1.2rem 1.6rem;
 }
 
+.stream-scoreboard .display-table {
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
+}
+
+.stream-scoreboard .display-table th,
+.stream-scoreboard .display-table td {
+  padding: 0.85rem 1rem;
+  white-space: nowrap;
+}
+
+.stream-scoreboard .display-table td:nth-child(2) {
+  white-space: normal;
+}
+
 .display-table thead th {
   background: rgba(20, 20, 35, 0.9);
   color: #c6a8ff;

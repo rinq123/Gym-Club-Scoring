@@ -89,16 +89,16 @@ function toDate(value) {
 
 function getRowsPerPage() {
   const height = window.innerHeight || 1080;
-  if (height >= 1200) {
-    return 14;
-  }
   if (height >= 1000) {
-    return 12;
+    return 10;
   }
   if (height >= 900) {
-    return 11;
+    return 9;
   }
-  return 9;
+  if (height >= 800) {
+    return 8;
+  }
+  return 7;
 }
 
 function triggerPageFlip() {
@@ -153,7 +153,11 @@ function renderScoreboard(isPaging = false) {
   const rows = scores
     .map((score) => ({
       ...score,
-      athleteName: score.athleteName || "Unknown"
+      athleteName: score.athleteName || "Unknown",
+      athleteClub: score.athleteClub || "Unknown",
+      competitorNumber: score.competitorNumber || "--",
+      category: score.category || "--",
+      grade: score.grade || "--"
     }))
     .sort((a, b) => b.total - a.total);
 
@@ -189,6 +193,10 @@ function renderScoreboard(isPaging = false) {
     row.innerHTML = `
       <td>${start + index + 1}</td>
       <td>${score.athleteName}</td>
+      <td>${score.competitorNumber || "--"}</td>
+      <td>${score.athleteClub}</td>
+      <td>${score.category}</td>
+      <td>${score.grade || "--"}</td>
       <td>${score.total.toFixed(3)}</td>
     `;
     scoreRows.appendChild(row);

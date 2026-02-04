@@ -392,6 +392,7 @@ function bindActiveCompetition(id) {
   activeUnsubscribers.push(onSnapshot(query(activeScoresCol, orderBy("timestamp", "desc")), (snap) => {
     scores = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     renderRecent();
+    renderAthleteOptions();
   }));
 
   activeUnsubscribers.push(onSnapshot(activeStreamRef, (snap) => {
@@ -761,6 +762,7 @@ form.addEventListener("submit", async (event) => {
     });
 
     form.reset();
+    renderAthleteOptions();
   } finally {
     isSavingScore = false;
     scoreSubmitBtn.disabled = false;
