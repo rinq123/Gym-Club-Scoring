@@ -17,9 +17,23 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https:/
 
 const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational 2026",
-  categories: ["Mixed Pair", "Mixed Trio"],
-  grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"]
+  categories: [
+    "Women's Pair",
+    "Mixed Pair",
+    "Men's Pair",
+    "Women's Group",
+    "Men's Group"
+  ],
+  grades: [
+    "Grade 1",
+    "Grade 2",
+    "Grade 3",
+    "Grade 4",
+    "Grade 5",
+    "Aspire",
+    "IDP 1",
+    "IDP 2"
+  ]
 };
 
 const ADMIN_EMAILS = [
@@ -37,7 +51,7 @@ const recentList = document.querySelector("#recent-list");
 const athleteForm = document.querySelector("#athlete-form");
 const athleteNameInput = document.querySelector("#athlete-name");
 const athleteClubInput = document.querySelector("#athlete-club");
-const athleteGroupSelect = document.querySelector("#athlete-group");
+const athleteNumberInput = document.querySelector("#athlete-number");
 const categoryTagsContainer = document.querySelector("#athlete-category-tags");
 const gradeTagsContainer = document.querySelector("#athlete-grade-tags");
 const athleteList = document.querySelector("#athlete-list");
@@ -105,7 +119,6 @@ function buildPublicSettings(nextSettings) {
     competitionName: nextSettings.competitionName,
     categories: nextSettings.categories,
     grades: nextSettings.grades,
-    groupTypes: nextSettings.groupTypes,
     activeCompetitionId
   };
 }
@@ -308,7 +321,7 @@ function bindActiveCompetition(id) {
   setActiveRefs(id);
   clearActiveSubscriptions();
 
-  activeUnsubscribers.push(onSnapshot(activeSettingsRef, (snap) => {
+  activeUnsubscribers.push(onSnapshot(activeSettingsRef, async (snap) => {
     if (!snap.exists()) {
       settings = { ...DEFAULT_SETTINGS };
       fillSelect(categorySelect, settings.categories);
@@ -317,7 +330,11 @@ function bindActiveCompetition(id) {
       syncPublicSettings(settings);
       return;
     }
-    settings = { ...DEFAULT_SETTINGS, ...snap.data() };
+    const { next, changed } = normalizeSettings(snap.data());
+    settings = next;
+    if (changed) {
+      await setDoc(activeSettingsRef, { categories: settings.categories, grades: settings.grades }, { merge: true });
+    }
     fillSelect(categorySelect, settings.categories);
     renderTagOptions(categoryTagsContainer, settings.categories);
     renderTagOptions(gradeTagsContainer, settings.grades);
@@ -390,6 +407,25 @@ function renderClubOptions() {
   });
 }
 
+function normalizeSettings(raw) {
+  const storedCats = Array.isArray(raw?.categories) ? raw.categories : [];
+  const storedGrades = Array.isArray(raw?.grades) ? raw.grades : [];
+  const catsMatch = storedCats.length === DEFAULT_SETTINGS.categories.length
+    && storedCats.every((cat, index) => cat === DEFAULT_SETTINGS.categories[index]);
+  const gradesMatch = storedGrades.length === DEFAULT_SETTINGS.grades.length
+    && storedGrades.every((grade, index) => grade === DEFAULT_SETTINGS.grades[index]);
+  const changed = !catsMatch || !gradesMatch;
+  return {
+    next: {
+      ...DEFAULT_SETTINGS,
+      ...raw,
+      categories: DEFAULT_SETTINGS.categories,
+      grades: DEFAULT_SETTINGS.grades
+    },
+    changed
+  };
+}
+
 function lockUI() {
   document.body.classList.add("is-locked");
   authGate.classList.remove("hidden");
@@ -428,7 +464,8 @@ function renderAthleteOptions() {
   eligible.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
-    option.textContent = `${athlete.name} (${athlete.groupType}, ${athlete.club})`;
+    const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    option.textContent = `${athlete.name} (${compNumber}, ${athlete.club})`;
     athleteSelect.appendChild(option);
   });
 }
@@ -443,7 +480,8 @@ function renderStreamPerformerOptions() {
   athletes.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
-    option.textContent = `${athlete.name} (${athlete.groupType}, ${athlete.club})`;
+    const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    option.textContent = `${athlete.name} (${compNumber}, ${athlete.club})`;
     streamPerformer.appendChild(option);
   });
 
@@ -459,7 +497,8 @@ function renderAthleteList() {
     const text = document.createElement("span");
     const categoryLabel = athlete.categoryTags.join(", ") || "None";
     const gradeLabel = athlete.gradeTags ? athlete.gradeTags.join(", ") : "None";
-    text.textContent = `${athlete.name} - ${athlete.groupType} - ${athlete.club} | ${categoryLabel} | ${gradeLabel}`;
+    const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    text.textContent = `${athlete.name} - ${compNumber} - ${athlete.club} | ${categoryLabel} | ${gradeLabel}`;
     const actions = document.createElement("div");
     actions.className = "list-actions";
     const editBtn = document.createElement("button");
@@ -516,7 +555,8 @@ function renderRecent() {
     const item = document.createElement("li");
     const text = document.createElement("span");
     const athleteName = athlete ? athlete.name : "Unknown";
-    text.textContent = `${athleteName} - ${score.category} - ${score.total.toFixed(3)}`;
+    const compNumber = athlete?.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+    text.textContent = `${athleteName} ${compNumber} - ${score.category} - ${score.total.toFixed(3)}`;
     const actions = document.createElement("div");
     actions.className = "list-actions";
     const editBtn = document.createElement("button");
@@ -555,7 +595,7 @@ function startAthleteEdit(athlete) {
   editingAthleteId = athlete.id;
   athleteNameInput.value = athlete.name || "";
   athleteClubInput.value = athlete.club || "";
-  athleteGroupSelect.value = athlete.groupType || "Individual";
+  athleteNumberInput.value = athlete.competitorNumber || "";
   categoryTagsContainer.querySelectorAll("input[type='checkbox']").forEach((input) => {
     input.checked = athlete.categoryTags?.includes(input.value) || false;
   });
@@ -792,11 +832,11 @@ athleteForm.addEventListener("submit", async (event) => {
   }
   const name = athleteNameInput.value.trim();
   const club = athleteClubInput.value.trim();
-  const groupType = athleteGroupSelect.value;
+  const competitorNumber = athleteNumberInput.value.trim();
   const categoryTags = getSelectedTags(categoryTagsContainer);
   const gradeTags = getSelectedTags(gradeTagsContainer);
 
-  if (!name || !club || !categoryTags.length || !gradeTags.length) {
+  if (!name || !club || !competitorNumber || !categoryTags.length || !gradeTags.length) {
     return;
   }
 
@@ -804,7 +844,7 @@ athleteForm.addEventListener("submit", async (event) => {
     await setDoc(doc(activeAthletesCol, editingAthleteId), {
       name,
       club,
-      groupType,
+      competitorNumber,
       categoryTags,
       gradeTags,
       updatedAt: serverTimestamp()
@@ -816,7 +856,7 @@ athleteForm.addEventListener("submit", async (event) => {
   await addDoc(activeAthletesCol, {
     name,
     club,
-    groupType,
+    competitorNumber,
     categoryTags,
     gradeTags,
     createdAt: serverTimestamp()

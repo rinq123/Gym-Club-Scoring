@@ -9,15 +9,28 @@ import {
 
 const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational 2026",
-  categories: ["Mixed Pair", "Mixed Trio"],
-  grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"]
+  categories: [
+    "Women's Pair",
+    "Mixed Pair",
+    "Men's Pair",
+    "Women's Group",
+    "Men's Group"
+  ],
+  grades: [
+    "Grade 1",
+    "Grade 2",
+    "Grade 3",
+    "Grade 4",
+    "Grade 5",
+    "Aspire",
+    "IDP 1",
+    "IDP 2"
+  ]
 };
 
 const settingsRef = doc(db, "settingsPublic", "current");
 
 const filterCategory = document.querySelector("#filter-category");
-const filterGroup = document.querySelector("#filter-group");
 const filterClub = document.querySelector("#filter-club");
 const tbody = document.querySelector("#score-rows");
 const contextLabel = document.querySelector("#current-context");
@@ -49,7 +62,6 @@ function fillSelect(select, options, selectedValue) {
 
 function populateFilters() {
   fillSelect(filterCategory, ["All", ...settings.categories], "All");
-  fillSelect(filterGroup, ["All", ...settings.groupTypes], "All");
   const clubs = [...new Set(athletes.map((athlete) => athlete.club))];
   fillSelect(filterClub, ["All", ...clubs], "All");
 
@@ -61,8 +73,7 @@ function populateFilters() {
 
 function buildContextLabel() {
   const categoryLabel = filterCategory.value === "All" ? "All Categories" : filterCategory.value;
-  const groupLabel = filterGroup.value === "All" ? "" : ` - ${filterGroup.value}`;
-  contextLabel.textContent = `${categoryLabel}${groupLabel}`;
+  contextLabel.textContent = categoryLabel;
 }
 
 function toDate(value) {
@@ -85,11 +96,10 @@ function renderScores() {
         ...score,
         athleteName: athlete ? athlete.name : "Unknown",
         club: athlete ? athlete.club : "Unknown",
-        groupType: athlete ? athlete.groupType : "Unknown"
+        competitorNumber: athlete ? athlete.competitorNumber : "--"
       };
     })
     .filter((score) => (filterCategory.value === "All" ? true : score.category === filterCategory.value))
-    .filter((score) => (filterGroup.value === "All" ? true : score.groupType === filterGroup.value))
     .filter((score) => (filterClub.value === "All" ? true : score.club === filterClub.value))
     .sort((a, b) => b.total - a.total);
 
@@ -114,7 +124,7 @@ function renderScores() {
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${score.athleteName}</td>
-      <td>${score.groupType}</td>
+      <td>${score.competitorNumber || "--"}</td>
       <td>${score.club}</td>
       <td>${score.total.toFixed(3)}</td>
     `;
@@ -165,7 +175,6 @@ function renderAll() {
 }
 
 filterCategory.addEventListener("change", renderAll);
-filterGroup.addEventListener("change", renderAll);
 filterClub.addEventListener("change", renderAll);
 
 onSnapshot(settingsRef, (snap) => {

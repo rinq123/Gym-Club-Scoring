@@ -9,9 +9,23 @@ import {
 
 const DEFAULT_SETTINGS = {
   competitionName: "Eclipse Invitational 2026",
-  categories: ["Mixed Pair", "Mixed Trio"],
-  grades: ["Grade 1", "Grade 2"],
-  groupTypes: ["Individual", "Group"]
+  categories: [
+    "Women's Pair",
+    "Mixed Pair",
+    "Men's Pair",
+    "Women's Group",
+    "Men's Group"
+  ],
+  grades: [
+    "Grade 1",
+    "Grade 2",
+    "Grade 3",
+    "Grade 4",
+    "Grade 5",
+    "Aspire",
+    "IDP 1",
+    "IDP 2"
+  ]
 };
 const DEFAULT_STREAM_STATE = { mode: "welcome", performerId: null, mixSeconds: 20 };
 
@@ -113,7 +127,8 @@ function renderSpotlight() {
   }
 
   performerName.textContent = athlete.name;
-  performerClub.textContent = `Club: ${athlete.club}`;
+  const compNumber = athlete.competitorNumber ? `#${athlete.competitorNumber}` : "No #";
+  performerClub.textContent = `Club: ${athlete.club} • Comp ${compNumber}`;
   const latestScore = scores
     .filter((score) => score.athleteId === athlete.id)
     .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];

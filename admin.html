@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=18">
+        <link rel="stylesheet" href="css/styles.css?v=20">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -103,11 +103,8 @@
                             <input type="text" id="athlete-club" list="club-options" placeholder="e.g. Aurora" required>
                             <datalist id="club-options"></datalist>
                         </label>
-                        <label class="field">Group Type
-                            <select id="athlete-group">
-                                <option value="Individual">Individual</option>
-                                <option value="Group">Group</option>
-                            </select>
+                        <label class="field">Competitor Number
+                            <input type="text" id="athlete-number" placeholder="e.g. A12" required>
                         </label>
                         <div class="tag-grid">
                             <div class="tag-group">
@@ -156,6 +153,6 @@
                 </section>
             </main>
         </div>
-        <script type="module" src="js/admin.js?v=20"></script>
+        <script type="module" src="js/admin.js?v=22"></script>
     </body>
 </html> 
