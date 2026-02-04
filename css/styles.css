@@ -1277,6 +1277,20 @@ table {
 }
 
 @media (max-width: 600px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .page-public .container {
+    max-width: 100%;
+    padding: 1rem;
+  }
+
+  .page-public .card {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .header-inner {
     flex-direction: column;
     align-items: flex-start;
@@ -1297,7 +1311,7 @@ table {
   }
 
   .page-public h1 {
-    font-size: clamp(1.7rem, 7vw, 2.4rem);
+    font-size: clamp(1.5rem, 6.5vw, 2.1rem);
   }
 
   .filter-grid {
@@ -1305,6 +1319,37 @@ table {
   }
 
   .page-public .card {
-    padding: 1.1rem;
+    padding: 1rem;
+  }
+
+  .page-public .section-title {
+    font-size: 1rem;
+  }
+
+  .page-public .field {
+    font-size: 0.9rem;
+  }
+
+  .page-public label input,
+  .page-public label select {
+    font-size: 0.9rem;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .page-public .btn {
+    font-size: 0.85rem;
+    padding: 0.55rem 0.9rem;
+  }
+
+  .page-public .context-pill {
+    font-size: 0.85rem;
+  }
+
+  .page-public .badge {
+    font-size: 0.75rem;
+  }
+
+  .page-public .refresh-hint {
+    font-size: 0.75rem;
   }
 }
