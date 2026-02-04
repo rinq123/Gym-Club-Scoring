@@ -88,16 +88,6 @@ function toDate(value) {
 }
 
 function getRowsPerPage() {
-  const height = window.innerHeight || 1080;
-  if (height >= 1000) {
-    return 10;
-  }
-  if (height >= 900) {
-    return 9;
-  }
-  if (height >= 800) {
-    return 8;
-  }
   return 7;
 }
 
