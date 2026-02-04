@@ -1271,8 +1271,9 @@ table {
     display: block;
   }
 
+  .table-wrap::before,
   .table-wrap::after {
-    opacity: 1;
+    display: none;
   }
 }
 
