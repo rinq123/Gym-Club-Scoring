@@ -336,6 +336,7 @@ label select:focus {
 
 .table-wrap {
   overflow-x: auto;
+  position: relative;
 }
 
 .table-wrap.is-updating {
@@ -353,6 +354,37 @@ label select:focus {
 
 .table-wrap.is-updating .score-table {
   opacity: 0.7;
+}
+
+.swipe-hint {
+  display: none;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: rgba(248, 247, 255, 0.7);
+  text-align: right;
+  letter-spacing: 0.5px;
+}
+
+.table-wrap::before,
+.table-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.table-wrap::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(7, 6, 14, 0.75), transparent);
+}
+
+.table-wrap::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(7, 6, 14, 0.75), transparent);
 }
 
 @keyframes shimmer {
@@ -1223,6 +1255,18 @@ table {
   .page-public .table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .stream-scoreboard .display-table {
+    min-width: 1000px;
+  }
+
+  .swipe-hint {
+    display: block;
+  }
+
+  .table-wrap::after {
+    opacity: 1;
   }
 }
 
