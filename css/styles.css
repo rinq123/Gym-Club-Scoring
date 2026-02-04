@@ -146,6 +146,16 @@ body.is-locked {
   border-bottom: 1px solid rgba(124, 77, 255, 0.35);
 }
 
+.site-header .btn.ghost {
+  color: #f8f7ff;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.site-header .btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .header-inner {
   display: flex;
   align-items: center;
@@ -472,6 +482,16 @@ table {
   border-radius: 20px;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
   padding: 2rem;
+}
+
+.help-card .btn.ghost {
+  color: #f8f7ff;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.help-card .btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .help-header {
