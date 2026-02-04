@@ -386,15 +386,18 @@ table {
 
 .tag-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.25rem;
+  row-gap: 0.65rem;
 }
 
 .tag-options label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: 1.1rem 1fr;
+  gap: 0.5rem;
+  align-items: start;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 .form-actions {
