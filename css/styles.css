@@ -43,6 +43,10 @@ p {
   flex-direction: column;
 }
 
+.page-public {
+  overflow-x: hidden;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -1245,6 +1249,7 @@ table {
   .page-public .score-table {
     min-width: 960px;
     font-size: 0.85rem;
+    width: max-content;
   }
 
   .page-public .score-table th,
@@ -1259,6 +1264,7 @@ table {
 
   .stream-scoreboard .display-table {
     min-width: 1000px;
+    width: max-content;
   }
 
   .swipe-hint {
