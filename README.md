@@ -9,6 +9,14 @@ This project is intentionally **no backend** (static HTML/CSS/JS) and relies on 
 
 ---
 
+## Live Demos
+
+- Admin Panel: https://eclipse-invitational.web.app/admin.html
+- Public Scoreboard: https://eclipse-invitational.web.app/index.html
+- Stream Display: https://eclipse-invitational.web.app/stream.html
+
+---
+
 ## Key Features
 
 - Competition manager (create, archive, delete, set active).
