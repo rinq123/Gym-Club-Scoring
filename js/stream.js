@@ -88,7 +88,7 @@ function toDate(value) {
 }
 
 function getRowsPerPage() {
-  return 6;
+  return 5;
 }
 
 function triggerPageFlip() {
