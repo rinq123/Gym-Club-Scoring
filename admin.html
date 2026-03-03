@@ -43,6 +43,9 @@
                         <span class="badge">Admin only</span>
                     </div>
                     <form class="form-grid">
+                        <label class="field">Search Competition
+                            <input type="search" id="competition-search" placeholder="Search by competition name">
+                        </label>
                         <label class="field">Active Competition
                             <select id="competition-select"></select>
                         </label>
@@ -78,6 +81,12 @@
                     <form id="score-form" class="form-grid">
                         <label class="field">Category
                             <select name="category" id="category"></select>
+                        </label>
+                        <label class="field">Grade Filter
+                            <select name="score-grade-filter" id="score-grade-filter"></select>
+                        </label>
+                        <label class="field">Search Gymnast(s)
+                            <input type="search" id="score-athlete-search" placeholder="Search by name, Comp No., club, grade">
                         </label>
                         <label class="field">Gymnast(s)
                             <select name="athlete" id="athlete"></select>
@@ -140,6 +149,9 @@
                         <span class="badge">Live broadcast mode</span>
                     </div>
                     <div class="form-grid">
+                        <label class="field">Search Performer
+                            <input type="search" id="stream-performer-search" placeholder="Search by name, Comp No., club">
+                        </label>
                         <label class="field">Current Performer
                             <select id="stream-performer"></select>
                         </label>
@@ -183,6 +195,6 @@
                 </div>
             </div>
         </div>
-        <script type="module" src="js/admin.js?v=31"></script>
+        <script type="module" src="js/admin.js?v=32"></script>
     </body>
 </html> 

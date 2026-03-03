@@ -42,6 +42,8 @@ const difficultyInput = document.querySelector('[name="difficulty"]');
 const penaltiesInput = document.querySelector('[name="penalties"]');
 const totalInput = document.querySelector('[name="total"]');
 const categorySelect = document.querySelector("#category");
+const scoreGradeFilterSelect = document.querySelector("#score-grade-filter");
+const scoreAthleteSearchInput = document.querySelector("#score-athlete-search");
 const athleteSelect = document.querySelector("#athlete");
 const form = document.querySelector("#score-form");
 const recentList = document.querySelector("#recent-list");
@@ -55,6 +57,7 @@ const athleteList = document.querySelector("#athlete-list");
 const athleteSearchInput = document.querySelector("#athlete-search");
 const clubOptions = document.querySelector("#club-options");
 const streamPerformer = document.querySelector("#stream-performer");
+const streamPerformerSearchInput = document.querySelector("#stream-performer-search");
 const streamStatus = document.querySelector("#stream-status");
 const streamButtons = document.querySelectorAll("[data-stream]");
 const resetDemoBtn = document.querySelector("#reset-demo");
@@ -71,6 +74,7 @@ const athleteCancelBtn = document.querySelector("#athlete-cancel");
 const scoreEditingLabel = document.querySelector("#score-editing");
 const athleteEditingLabel = document.querySelector("#athlete-editing");
 const competitionSelect = document.querySelector("#competition-select");
+const competitionSearchInput = document.querySelector("#competition-search");
 const competitionNameInput = document.querySelector("#competition-name");
 const competitionActivateBtn = document.querySelector("#competition-activate");
 const competitionRenameBtn = document.querySelector("#competition-rename");
@@ -122,6 +126,9 @@ let isSavingAthlete = false;
 const pendingScoreKeys = new Set();
 let athleteSearchTerm = "";
 let recentSearchTerm = "";
+let scoreAthleteSearchTerm = "";
+let streamPerformerSearchTerm = "";
+let competitionSearchTerm = "";
 
 const ADMIN_EMAIL_KEY = "eclipseAdminEmail";
 
@@ -234,19 +241,43 @@ function clearActiveSubscriptions() {
 }
 
 function renderCompetitionSelect() {
-  competitionSelect.innerHTML = "";
-  competitions.forEach((competition) => {
-    const option = document.createElement("option");
-    option.value = competition.id;
-    option.textContent = competition.archived ? `${competition.name} (Archived)` : competition.name;
-    competitionSelect.appendChild(option);
+  const previousSelection = competitionSelect.value || activeCompetitionId;
+  const filteredCompetitions = competitions.filter((competition) => {
+    if (!competitionSearchTerm) {
+      return true;
+    }
+    const summary = `${competition.name || ""} ${competition.id || ""}`.toLowerCase();
+    return summary.includes(competitionSearchTerm);
   });
-  if (activeCompetitionId) {
-    competitionSelect.value = activeCompetitionId;
+
+  competitionSelect.innerHTML = "";
+  if (!filteredCompetitions.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No matching competitions";
+    option.disabled = true;
+    option.selected = true;
+    competitionSelect.appendChild(option);
+  } else {
+    filteredCompetitions.forEach((competition) => {
+      const option = document.createElement("option");
+      option.value = competition.id;
+      option.textContent = competition.archived ? `${competition.name} (Archived)` : competition.name;
+      competitionSelect.appendChild(option);
+    });
+
+    const selectedCompetition =
+      filteredCompetitions.find((entry) => entry.id === previousSelection) ||
+      filteredCompetitions.find((entry) => entry.id === activeCompetitionId) ||
+      filteredCompetitions[0];
+    if (selectedCompetition) {
+      competitionSelect.value = selectedCompetition.id;
+    }
   }
+
   const selected = competitions.find((entry) => entry.id === competitionSelect.value);
   const active = competitions.find((entry) => entry.id === activeCompetitionId);
-  competitionNameInput.value = selected ? selected.name : DEFAULT_SETTINGS.competitionName;
+  competitionNameInput.value = selected ? selected.name : (active ? active.name : DEFAULT_SETTINGS.competitionName);
   competitionStatus.textContent = active ? `Active: ${active.name}` : "Active: --";
   adminTitle.textContent = active ? active.name : DEFAULT_SETTINGS.competitionName;
   activeCompetition = active || null;
@@ -420,7 +451,8 @@ function bindActiveCompetition(id) {
   activeUnsubscribers.push(onSnapshot(activeSettingsRef, async (snap) => {
     if (!snap.exists()) {
       settings = { ...DEFAULT_SETTINGS };
-      fillSelect(categorySelect, settings.categories);
+      fillSelect(categorySelect, settings.categories, categorySelect.value);
+      fillSelect(scoreGradeFilterSelect, ["All", ...settings.grades], scoreGradeFilterSelect?.value || "All");
       renderTagOptions(categoryTagsContainer, settings.categories);
       renderTagOptions(gradeTagsContainer, settings.grades);
       syncPublicSettings(settings);
@@ -431,7 +463,8 @@ function bindActiveCompetition(id) {
     if (changed) {
       await setDoc(activeSettingsRef, { categories: settings.categories, grades: settings.grades }, { merge: true });
     }
-    fillSelect(categorySelect, settings.categories);
+    fillSelect(categorySelect, settings.categories, categorySelect.value);
+    fillSelect(scoreGradeFilterSelect, ["All", ...settings.grades], scoreGradeFilterSelect?.value || "All");
     renderTagOptions(categoryTagsContainer, settings.categories);
     renderTagOptions(gradeTagsContainer, settings.grades);
     renderAthleteOptions();
@@ -467,7 +500,10 @@ function bindActiveCompetition(id) {
   }));
 }
 
-function fillSelect(select, options) {
+function fillSelect(select, options, selectedValue = null) {
+  if (!select) {
+    return;
+  }
   select.innerHTML = "";
   options.forEach((option) => {
     const el = document.createElement("option");
@@ -475,6 +511,9 @@ function fillSelect(select, options) {
     el.textContent = option;
     select.appendChild(el);
   });
+  if (selectedValue && options.includes(selectedValue)) {
+    select.value = selectedValue;
+  }
 }
 
 function renderTagOptions(container, options) {
@@ -536,6 +575,8 @@ function unlockUI() {
 
 function renderAthleteOptions() {
   const category = categorySelect.value;
+  const gradeFilter = scoreGradeFilterSelect?.value || "All";
+  const previousSelection = athleteSelect.value;
   athleteSelect.innerHTML = "";
   const editingAthlete = editingScore?.athleteId;
   const scoredIds = new Set(
@@ -553,14 +594,34 @@ function renderAthleteOptions() {
   }
   pendingIds.forEach((id) => scoredIds.add(id));
 
-  const eligible = athletes.filter(
-    (athlete) => athlete.categoryTags.includes(category) && !scoredIds.has(athlete.id)
-  );
+  const eligible = athletes.filter((athlete) => {
+    if (!athlete.categoryTags.includes(category) || scoredIds.has(athlete.id)) {
+      return false;
+    }
+    if (gradeFilter !== "All" && !(athlete.gradeTags || []).includes(gradeFilter)) {
+      return false;
+    }
+    if (scoreAthleteSearchTerm) {
+      const summary = [
+        athlete.name || "",
+        athlete.club || "",
+        athlete.competitorNumber || "",
+        (athlete.categoryTags || []).join(" "),
+        (athlete.gradeTags || []).join(" ")
+      ].join(" ").toLowerCase();
+      if (!summary.includes(scoreAthleteSearchTerm)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   if (!eligible.length) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "No eligible gymnast(s)";
+    option.textContent = gradeFilter !== "All" || scoreAthleteSearchTerm
+      ? "No matching gymnast(s)"
+      : "No eligible gymnast(s)";
     option.disabled = true;
     option.selected = true;
     athleteSelect.appendChild(option);
@@ -574,16 +635,42 @@ function renderAthleteOptions() {
     option.textContent = `${athlete.name} (${compNumber}, ${athlete.club})`;
     athleteSelect.appendChild(option);
   });
+
+  const keepPrevious = eligible.some((athlete) => athlete.id === previousSelection);
+  athleteSelect.value = keepPrevious ? previousSelection : eligible[0].id;
 }
 
 function renderStreamPerformerOptions() {
+  const previousSelection = streamPerformer.value || streamState.performerId || "";
   streamPerformer.innerHTML = "";
   const optionNone = document.createElement("option");
   optionNone.value = "";
   optionNone.textContent = "No performer selected";
   streamPerformer.appendChild(optionNone);
 
-  athletes.forEach((athlete) => {
+  const visibleAthletes = athletes.filter((athlete) => {
+    if (!streamPerformerSearchTerm) {
+      return true;
+    }
+    const summary = [
+      athlete.name || "",
+      athlete.club || "",
+      athlete.competitorNumber || "",
+      (athlete.categoryTags || []).join(" "),
+      (athlete.gradeTags || []).join(" ")
+    ].join(" ").toLowerCase();
+    return summary.includes(streamPerformerSearchTerm);
+  });
+
+  const selectedPerformer = athletes.find((entry) => entry.id === streamState.performerId);
+  if (
+    selectedPerformer &&
+    !visibleAthletes.some((entry) => entry.id === selectedPerformer.id)
+  ) {
+    visibleAthletes.unshift(selectedPerformer);
+  }
+
+  visibleAthletes.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
     const compNumber = athlete.competitorNumber ? `Comp No. ${athlete.competitorNumber}` : "Comp No. --";
@@ -591,7 +678,18 @@ function renderStreamPerformerOptions() {
     streamPerformer.appendChild(option);
   });
 
-  if (streamState.performerId) {
+  if (streamPerformerSearchTerm && !visibleAthletes.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No matching performer";
+    option.disabled = true;
+    streamPerformer.appendChild(option);
+  }
+
+  const canKeep = Array.from(streamPerformer.options).some((option) => option.value === previousSelection);
+  if (canKeep) {
+    streamPerformer.value = previousSelection;
+  } else if (streamState.performerId) {
     streamPerformer.value = streamState.performerId;
   }
 }
@@ -801,6 +899,13 @@ function clearAthleteEdit() {
 function startScoreEdit(score) {
   editingScoreId = score.id;
   editingScore = score;
+  if (scoreAthleteSearchInput) {
+    scoreAthleteSearchInput.value = "";
+  }
+  scoreAthleteSearchTerm = "";
+  if (scoreGradeFilterSelect) {
+    scoreGradeFilterSelect.value = "All";
+  }
   categorySelect.value = score.category;
   renderAthleteOptions();
   athleteSelect.value = score.athleteId;
@@ -1302,6 +1407,31 @@ athleteCancelBtn.addEventListener("click", () => {
 });
 
 categorySelect.addEventListener("change", renderAthleteOptions);
+
+if (scoreGradeFilterSelect) {
+  scoreGradeFilterSelect.addEventListener("change", renderAthleteOptions);
+}
+
+if (scoreAthleteSearchInput) {
+  scoreAthleteSearchInput.addEventListener("input", () => {
+    scoreAthleteSearchTerm = scoreAthleteSearchInput.value.trim().toLowerCase();
+    renderAthleteOptions();
+  });
+}
+
+if (streamPerformerSearchInput) {
+  streamPerformerSearchInput.addEventListener("input", () => {
+    streamPerformerSearchTerm = streamPerformerSearchInput.value.trim().toLowerCase();
+    renderStreamPerformerOptions();
+  });
+}
+
+if (competitionSearchInput) {
+  competitionSearchInput.addEventListener("input", () => {
+    competitionSearchTerm = competitionSearchInput.value.trim().toLowerCase();
+    renderCompetitionSelect();
+  });
+}
 
 enforceSingleCheck(categoryTagsContainer);
 enforceSingleCheck(gradeTagsContainer);
