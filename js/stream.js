@@ -40,6 +40,7 @@ const DEFAULT_STREAM_STATE = {
 
 const settingsRef = doc(db, "settingsPublic", "current");
 
+const streamRoot = document.querySelector(".display.stream");
 const title = document.querySelector("#stream-title");
 const updated = document.querySelector("#stream-updated");
 const idlePanel = document.querySelector("#stream-idle");
@@ -115,9 +116,30 @@ function spotlightFitsViewport() {
   if (!spotlightPanel) {
     return true;
   }
-  return (
+  const panelRect = spotlightPanel.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+  const edgePadding = 8;
+
+  const withinViewport = (
+    panelRect.top >= edgePadding &&
+    panelRect.left >= edgePadding &&
+    panelRect.bottom <= viewportHeight - edgePadding &&
+    panelRect.right <= viewportWidth - edgePadding
+  );
+
+  const noInternalOverflow = (
     spotlightPanel.scrollHeight <= spotlightPanel.clientHeight + 1 &&
     spotlightPanel.scrollWidth <= spotlightPanel.clientWidth + 1
+  );
+
+  const contentBottom = performerScore.getBoundingClientRect().bottom;
+  const scoreVisible = contentBottom <= panelRect.bottom - 6;
+
+  return (
+    withinViewport &&
+    noInternalOverflow &&
+    scoreVisible
   );
 }
 
@@ -131,7 +153,7 @@ function fitSpotlightContent() {
     return;
   }
 
-  let low = 0.45;
+  let low = 0.28;
   let high = 1;
   let best = low;
 
@@ -359,6 +381,10 @@ function renderStream() {
     updated.textContent = `Updated ${latest.toLocaleTimeString()}`;
   } else {
     updated.textContent = "Awaiting scores";
+  }
+
+  if (streamRoot) {
+    streamRoot.classList.toggle("is-mode-spotlight", mode === "spotlight");
   }
 
   if (mode === "mix") {
