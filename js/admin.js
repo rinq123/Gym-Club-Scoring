@@ -451,7 +451,7 @@ function bindActiveCompetition(id) {
   activeUnsubscribers.push(onSnapshot(activeSettingsRef, async (snap) => {
     if (!snap.exists()) {
       settings = { ...DEFAULT_SETTINGS };
-      fillSelect(categorySelect, settings.categories, categorySelect.value);
+      fillSelect(categorySelect, ["All", ...settings.categories], categorySelect?.value || "All");
       fillSelect(scoreGradeFilterSelect, ["All", ...settings.grades], scoreGradeFilterSelect?.value || "All");
       renderTagOptions(categoryTagsContainer, settings.categories);
       renderTagOptions(gradeTagsContainer, settings.grades);
@@ -463,7 +463,7 @@ function bindActiveCompetition(id) {
     if (changed) {
       await setDoc(activeSettingsRef, { categories: settings.categories, grades: settings.grades }, { merge: true });
     }
-    fillSelect(categorySelect, settings.categories, categorySelect.value);
+    fillSelect(categorySelect, ["All", ...settings.categories], categorySelect?.value || "All");
     fillSelect(scoreGradeFilterSelect, ["All", ...settings.grades], scoreGradeFilterSelect?.value || "All");
     renderTagOptions(categoryTagsContainer, settings.categories);
     renderTagOptions(gradeTagsContainer, settings.grades);
@@ -575,17 +575,20 @@ function unlockUI() {
 
 function renderAthleteOptions() {
   const category = categorySelect.value;
+  const categoryFilter = category === "All" ? null : category;
   const gradeFilter = scoreGradeFilterSelect?.value || "All";
   const previousSelection = athleteSelect.value;
   athleteSelect.innerHTML = "";
   const editingAthlete = editingScore?.athleteId;
   const scoredIds = new Set(
-    scores.filter((score) => score.category === category).map((score) => score.athleteId)
+    scores
+      .filter((score) => (categoryFilter ? score.category === categoryFilter : true))
+      .map((score) => score.athleteId)
   );
   const pendingIds = new Set();
   pendingScoreKeys.forEach((key) => {
     const [athleteId, pendingCategory] = key.split("::");
-    if (pendingCategory === category) {
+    if (!categoryFilter || pendingCategory === categoryFilter) {
       pendingIds.add(athleteId);
     }
   });
@@ -595,7 +598,10 @@ function renderAthleteOptions() {
   pendingIds.forEach((id) => scoredIds.add(id));
 
   const eligible = athletes.filter((athlete) => {
-    if (!athlete.categoryTags.includes(category) || scoredIds.has(athlete.id)) {
+    if (categoryFilter && !athlete.categoryTags.includes(categoryFilter)) {
+      return false;
+    }
+    if (scoredIds.has(athlete.id)) {
       return false;
     }
     if (gradeFilter !== "All" && !(athlete.gradeTags || []).includes(gradeFilter)) {
@@ -631,8 +637,11 @@ function renderAthleteOptions() {
   eligible.forEach((athlete) => {
     const option = document.createElement("option");
     option.value = athlete.id;
+    const athleteCategory = athlete.categoryTags?.[0] || "--";
     const compNumber = athlete.competitorNumber ? `Comp No. ${athlete.competitorNumber}` : "Comp No. --";
-    option.textContent = `${athlete.name} (${compNumber}, ${athlete.club})`;
+    option.textContent = categoryFilter
+      ? `${athlete.name} (${compNumber}, ${athlete.club})`
+      : `${athlete.name} (${athleteCategory}, ${compNumber}, ${athlete.club})`;
     athleteSelect.appendChild(option);
   });
 
@@ -1046,10 +1055,17 @@ form.addEventListener("submit", async (event) => {
   const category = categorySelect.value;
   const athleteId = athleteSelect.value;
   const athlete = athletes.find((entry) => entry.id === athleteId);
+  const resolvedCategory = category === "All"
+    ? (athlete?.categoryTags?.[0] || "")
+    : category;
 
   let hasErrors = false;
   if (!category) {
     setFieldError(categorySelect.closest(".field"), "Select a category.");
+    hasErrors = true;
+  }
+  if (category === "All" && !resolvedCategory) {
+    setFieldError(categorySelect.closest(".field"), "Selected gymnast(s) needs a category tag.");
     hasErrors = true;
   }
   if (!athleteId) {
@@ -1097,7 +1113,7 @@ form.addEventListener("submit", async (event) => {
     if (editingScoreId) {
       await setDoc(doc(activeScoresCol, editingScoreId), {
         athleteId,
-        category,
+        category: resolvedCategory,
         grade,
         athleteName,
         athleteClub,
@@ -1109,14 +1125,14 @@ form.addEventListener("submit", async (event) => {
         total,
         timestamp: serverTimestamp()
       }, { merge: true });
-      markScorePending(athleteId, category);
+      markScorePending(athleteId, resolvedCategory);
       clearScoreEdit();
       return;
     }
 
     await addDoc(activeScoresCol, {
       athleteId,
-      category,
+      category: resolvedCategory,
       grade,
       athleteName,
       athleteClub,
@@ -1129,7 +1145,7 @@ form.addEventListener("submit", async (event) => {
       timestamp: serverTimestamp()
     });
 
-    markScorePending(athleteId, category);
+    markScorePending(athleteId, resolvedCategory);
     artistryInput.value = "";
     executionInput.value = "";
     difficultyInput.value = "";
