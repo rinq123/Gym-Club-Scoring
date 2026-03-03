@@ -762,6 +762,10 @@ table {
   letter-spacing: 1px;
 }
 
+.stream .display-header h1 {
+  font-size: clamp(2.2rem, 3.4vw, 3.2rem);
+}
+
 .display-context {
   display: flex;
   align-items: center;
@@ -796,13 +800,13 @@ table {
 }
 
 .stream-scoreboard .display-table {
-  font-size: clamp(0.9rem, 1.3vw, 1.4rem);
+  font-size: clamp(1rem, 1.45vw, 1.6rem);
   table-layout: fixed;
 }
 
 .stream-scoreboard .display-table th,
 .stream-scoreboard .display-table td {
-  padding: 0.55rem 0.65rem;
+  padding: 0.6rem 0.75rem;
   white-space: nowrap;
 }
 
@@ -812,17 +816,17 @@ table {
 
 .stream-scoreboard .display-table th:nth-child(1),
 .stream-scoreboard .display-table td:nth-child(1) {
-  width: 5%;
+  width: 6%;
 }
 
 .stream-scoreboard .display-table th:nth-child(2),
 .stream-scoreboard .display-table td:nth-child(2) {
-  width: 20%;
+  width: 36%;
 }
 
 .stream-scoreboard .display-table th:nth-child(3),
 .stream-scoreboard .display-table td:nth-child(3) {
-  width: 8%;
+  width: 16%;
 }
 
 .stream-scoreboard .display-table th:nth-child(4),
@@ -837,27 +841,36 @@ table {
 
 .stream-scoreboard .display-table th:nth-child(6),
 .stream-scoreboard .display-table td:nth-child(6) {
-  width: 8%;
-}
-
-.stream-scoreboard .display-table th:nth-child(7),
-.stream-scoreboard .display-table td:nth-child(7),
-.stream-scoreboard .display-table th:nth-child(8),
-.stream-scoreboard .display-table td:nth-child(8),
-.stream-scoreboard .display-table th:nth-child(9),
-.stream-scoreboard .display-table td:nth-child(9),
-.stream-scoreboard .display-table th:nth-child(10),
-.stream-scoreboard .display-table td:nth-child(10) {
-  width: 6%;
-}
-
-.stream-scoreboard .display-table th:nth-child(11),
-.stream-scoreboard .display-table td:nth-child(11) {
-  width: 9%;
+  width: 18%;
 }
 
 .stream-scoreboard .display-table td:last-child {
-  font-size: clamp(1.05rem, 1.6vw, 1.6rem);
+  font-size: clamp(1.25rem, 2vw, 2rem);
+  font-weight: 700;
+  color: #f8f7ff;
+}
+
+.stream-scoreboard .stream-score-main td {
+  border-bottom: none;
+}
+
+.stream-scoreboard .stream-score-detail td {
+  padding-top: 0.3rem;
+  padding-bottom: 0.65rem;
+  border-top: none;
+}
+
+.stream-breakdown {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: clamp(0.78rem, 1.05vw, 1.05rem);
+  color: #c6a8ff;
+}
+
+.stream-breakdown strong {
+  color: #f8f7ff;
   font-weight: 700;
 }
 

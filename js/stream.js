@@ -88,7 +88,7 @@ function toDate(value) {
 }
 
 function getRowsPerPage() {
-  return 7;
+  return 6;
 }
 
 function triggerPageFlip() {
@@ -172,7 +172,7 @@ function renderScoreboard(isPaging = false) {
 
   if (!rows.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="11">No scores yet.</td>`;
+    row.innerHTML = `<td colspan="6">No scores yet.</td>`;
     scoreRows.appendChild(row);
     scoreCache = new Map();
     stopPagination();
@@ -192,27 +192,39 @@ function renderScoreboard(isPaging = false) {
   const nextCache = new Map();
   pageRows.forEach((score, index) => {
     const row = document.createElement("tr");
+    const detailRow = document.createElement("tr");
+    row.className = "stream-score-main";
+    detailRow.className = "stream-score-detail";
     const cachedTotal = scoreCache.get(score.id);
     if (cachedTotal === undefined || cachedTotal !== score.total) {
       row.classList.add("is-updated");
+      detailRow.classList.add("is-updated");
       setTimeout(() => {
         row.classList.remove("is-updated");
+        detailRow.classList.remove("is-updated");
       }, 2000);
     }
     row.innerHTML = `
       <td>${start + index + 1}</td>
       <td>${score.athleteName}</td>
-      <td>${score.competitorNumber || "--"}</td>
       <td>${score.athleteClub}</td>
-      <td>${score.category}</td>
+      <td>${score.competitorNumber || "--"}</td>
       <td>${score.grade || "--"}</td>
-      <td>${formatScore(score.artistry)}</td>
-      <td>${formatScore(score.execution)}</td>
-      <td>${formatScore(score.difficulty)}</td>
-      <td>${formatScore(score.penalties)}</td>
       <td>${formatScore(score.total)}</td>
     `;
+    detailRow.innerHTML = `
+      <td colspan="6">
+        <div class="stream-breakdown">
+          <span>Cat: <strong>${score.category || "--"}</strong></span>
+          <span>Art: <strong>${formatScore(score.artistry)}</strong></span>
+          <span>Exe: <strong>${formatScore(score.execution)}</strong></span>
+          <span>Dif: <strong>${formatScore(score.difficulty)}</strong></span>
+          <span>Pen: <strong>${formatScore(score.penalties)}</strong></span>
+        </div>
+      </td>
+    `;
     scoreRows.appendChild(row);
+    scoreRows.appendChild(detailRow);
     nextCache.set(score.id, score.total);
   });
   scoreCache = nextCache;
