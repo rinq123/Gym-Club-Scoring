@@ -52,6 +52,7 @@ const athleteNumberInput = document.querySelector("#athlete-number");
 const categoryTagsContainer = document.querySelector("#athlete-category-tags");
 const gradeTagsContainer = document.querySelector("#athlete-grade-tags");
 const athleteList = document.querySelector("#athlete-list");
+const athleteSearchInput = document.querySelector("#athlete-search");
 const clubOptions = document.querySelector("#club-options");
 const streamPerformer = document.querySelector("#stream-performer");
 const streamStatus = document.querySelector("#stream-status");
@@ -83,6 +84,7 @@ const helpPanel = document.querySelector("#help-panel");
 const helpClose = document.querySelector("#help-close");
 const exportAthletesBtn = document.querySelector("#export-athletes");
 const exportScoresBtn = document.querySelector("#export-scores");
+const recentSearchInput = document.querySelector("#recent-search");
 
 const settingsRef = doc(db, "settings", "current");
 const publicSettingsRef = doc(db, "settingsPublic", "current");
@@ -118,6 +120,8 @@ let activeUnsubscribers = [];
 let isSavingScore = false;
 let isSavingAthlete = false;
 const pendingScoreKeys = new Set();
+let athleteSearchTerm = "";
+let recentSearchTerm = "";
 
 const ADMIN_EMAIL_KEY = "eclipseAdminEmail";
 
@@ -616,7 +620,30 @@ function buildPerformerPayload(performerId) {
 
 function renderAthleteList() {
   athleteList.innerHTML = "";
-  athletes.forEach((athlete) => {
+  const visibleAthletes = athletes.filter((athlete) => {
+    if (!athleteSearchTerm) {
+      return true;
+    }
+    const categoryLabel = athlete.categoryTags.join(", ") || "none";
+    const gradeLabel = athlete.gradeTags ? athlete.gradeTags.join(", ") : "none";
+    const summary = [
+      athlete.name || "",
+      athlete.club || "",
+      athlete.competitorNumber || "",
+      categoryLabel,
+      gradeLabel
+    ].join(" ").toLowerCase();
+    return summary.includes(athleteSearchTerm);
+  });
+
+  if (!visibleAthletes.length) {
+    const item = document.createElement("li");
+    item.textContent = athleteSearchTerm ? "No matching gymnast(s)." : "No gymnast(s) yet.";
+    athleteList.appendChild(item);
+    return;
+  }
+
+  visibleAthletes.forEach((athlete) => {
     const item = document.createElement("li");
     const text = document.createElement("span");
     const categoryLabel = athlete.categoryTags.join(", ") || "None";
@@ -659,11 +686,30 @@ function renderAthleteList() {
 
 function renderRecent() {
   recentList.innerHTML = "";
-  const recentScores = [...scores].slice(0, 8);
+  const recentScores = [...scores]
+    .slice(0, 100)
+    .filter((score) => {
+      if (!recentSearchTerm) {
+        return true;
+      }
+      const athleteName = score.athleteName || athletes.find((entry) => entry.id === score.athleteId)?.name || "";
+      const compNumberValue = score.competitorNumber || athletes.find((entry) => entry.id === score.athleteId)?.competitorNumber || "";
+      const totalNumeric = Number(score.total);
+      const totalLabel = Number.isFinite(totalNumeric) ? totalNumeric.toFixed(3) : "";
+      const summary = [
+        athleteName,
+        score.category || "",
+        score.grade || "",
+        compNumberValue,
+        score.athleteClub || "",
+        totalLabel
+      ].join(" ").toLowerCase();
+      return summary.includes(recentSearchTerm);
+    });
 
   if (!recentScores.length) {
     const item = document.createElement("li");
-    item.textContent = "No scores yet.";
+    item.textContent = recentSearchTerm ? "No matching entries." : "No scores yet.";
     recentList.appendChild(item);
     return;
   }
@@ -1283,6 +1329,20 @@ athleteForm.addEventListener("change", (event) => {
     clearFieldError(group);
   }
 });
+
+if (athleteSearchInput) {
+  athleteSearchInput.addEventListener("input", () => {
+    athleteSearchTerm = athleteSearchInput.value.trim().toLowerCase();
+    renderAthleteList();
+  });
+}
+
+if (recentSearchInput) {
+  recentSearchInput.addEventListener("input", () => {
+    recentSearchTerm = recentSearchInput.value.trim().toLowerCase();
+    renderRecent();
+  });
+}
 
 pinForm.addEventListener("submit", (event) => {
   event.preventDefault();

@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=41">
+        <link rel="stylesheet" href="css/styles.css?v=42">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -127,6 +127,10 @@
                             <button type="button" class="btn ghost hidden" id="athlete-cancel">Cancel Edit</button>
                         </div>
                     </form>
+                    <label class="field list-search-field">
+                        Search Gymnast(s)
+                        <input type="search" id="athlete-search" placeholder="Search name, club, Comp No., category, grade">
+                    </label>
                     <ul id="athlete-list" class="recent-list"></ul>
                 </section>
 
@@ -155,6 +159,10 @@
                         <h2 class="section-title">Recent Entries</h2>
                         <span class="badge">Local only</span>
                     </div>
+                    <label class="field list-search-field">
+                        Search Entries
+                        <input type="search" id="recent-search" placeholder="Search gymnast(s), category, Comp No., score">
+                    </label>
                     <ul id="recent-list" class="recent-list"></ul>
                 </section>
             </main>
@@ -175,6 +183,6 @@
                 </div>
             </div>
         </div>
-        <script type="module" src="js/admin.js?v=30"></script>
+        <script type="module" src="js/admin.js?v=31"></script>
     </body>
 </html> 

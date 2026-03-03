@@ -652,6 +652,10 @@ table {
   gap: 0.75rem;
 }
 
+.list-search-field {
+  margin-top: 0.75rem;
+}
+
 .page-admin .recent-list {
   max-height: 260px;
   overflow-y: auto;
