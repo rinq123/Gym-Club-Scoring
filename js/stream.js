@@ -53,6 +53,9 @@ const streamWelcomeTitle = document.querySelector("#stream-welcome-title");
 const performerName = document.querySelector("#stream-performer-name");
 const performerClub = document.querySelector("#stream-performer-club");
 const performerScore = document.querySelector("#stream-performer-score");
+const performerScoreLabel = spotlightPanel ? spotlightPanel.querySelector(".stream-score-label") : null;
+const performerScoreBlock = spotlightPanel ? spotlightPanel.querySelector(".stream-score") : null;
+const spotlightSectionLabel = spotlightPanel ? spotlightPanel.querySelector(".stream-section-label") : null;
 const scoreRows = document.querySelector("#stream-score-rows");
 const scoreboardWrap = scoreboardPanel ? scoreboardPanel.querySelector(".table-wrap") : null;
 
@@ -70,6 +73,96 @@ let pageIndex = 0;
 let pageTimer = null;
 let lastPageCount = 1;
 let paginationEnabled = true;
+let spotlightFitRaf = null;
+
+const SPOTLIGHT_FIT_BOUNDS = {
+  name: { max: 148, min: 48 },
+  meta: { max: 46, min: 20 },
+  score: { max: 190, min: 70 },
+  scoreLabel: { max: 34, min: 16 },
+  sectionLabel: { max: 20, min: 11 },
+  scoreGap: { max: 30, min: 10 },
+  nameMarginBottom: { max: 18, min: 8 },
+  metaMarginBottom: { max: 36, min: 10 }
+};
+
+function scaleValue(bounds, scale) {
+  return Math.max(bounds.min, Math.round(bounds.max * scale));
+}
+
+function applySpotlightScale(scale) {
+  if (!spotlightPanel) {
+    return;
+  }
+  performerName.style.fontSize = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.name, scale)}px`;
+  performerClub.style.fontSize = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.meta, scale)}px`;
+  performerScore.style.fontSize = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.score, scale)}px`;
+  performerName.style.marginBottom = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.nameMarginBottom, scale)}px`;
+  performerClub.style.marginBottom = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.metaMarginBottom, scale)}px`;
+
+  if (performerScoreLabel) {
+    performerScoreLabel.style.fontSize = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.scoreLabel, scale)}px`;
+  }
+  if (spotlightSectionLabel) {
+    spotlightSectionLabel.style.fontSize = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.sectionLabel, scale)}px`;
+  }
+  if (performerScoreBlock) {
+    performerScoreBlock.style.gap = `${scaleValue(SPOTLIGHT_FIT_BOUNDS.scoreGap, scale)}px`;
+  }
+}
+
+function spotlightFitsViewport() {
+  if (!spotlightPanel) {
+    return true;
+  }
+  return (
+    spotlightPanel.scrollHeight <= spotlightPanel.clientHeight + 1 &&
+    spotlightPanel.scrollWidth <= spotlightPanel.clientWidth + 1
+  );
+}
+
+function fitSpotlightContent() {
+  if (!spotlightPanel || !spotlightPanel.classList.contains("is-active")) {
+    return;
+  }
+
+  applySpotlightScale(1);
+  if (spotlightFitsViewport()) {
+    return;
+  }
+
+  let low = 0.45;
+  let high = 1;
+  let best = low;
+
+  for (let i = 0; i < 12; i += 1) {
+    const mid = (low + high) / 2;
+    applySpotlightScale(mid);
+    if (spotlightFitsViewport()) {
+      best = mid;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  applySpotlightScale(best);
+}
+
+function scheduleSpotlightFit() {
+  if (!spotlightPanel) {
+    return;
+  }
+  if (spotlightFitRaf) {
+    cancelAnimationFrame(spotlightFitRaf);
+  }
+  spotlightFitRaf = requestAnimationFrame(() => {
+    spotlightFitRaf = requestAnimationFrame(() => {
+      fitSpotlightContent();
+      spotlightFitRaf = null;
+    });
+  });
+}
 
 function setPanel(panel) {
   [welcomePanel, idlePanel, announcementPanel, spotlightPanel, scoreboardPanel].forEach((section) => {
@@ -238,6 +331,7 @@ function renderSpotlight() {
     performerName.textContent = "No performer selected";
     performerClub.textContent = "Club: --";
     performerScore.textContent = "--";
+    scheduleSpotlightFit();
     return;
   }
 
@@ -248,6 +342,7 @@ function renderSpotlight() {
     .filter((score) => score.athleteId === streamState.performerId)
     .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];
   performerScore.textContent = latestScore ? latestScore.total.toFixed(3) : "--";
+  scheduleSpotlightFit();
 }
 
 function renderStream() {
@@ -393,4 +488,10 @@ onSnapshot(settingsRef, (snap) => {
 });
 
 renderStream();
+window.addEventListener("resize", () => {
+  if (streamState.mode === "spotlight") {
+    scheduleSpotlightFit();
+  }
+});
+window.addEventListener("load", scheduleSpotlightFit);
 
