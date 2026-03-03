@@ -172,7 +172,7 @@ function renderScoreboard(isPaging = false) {
 
   if (!rows.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="6">No scores yet.</td>`;
+    row.innerHTML = `<td colspan="7">No scores yet.</td>`;
     scoreRows.appendChild(row);
     scoreCache = new Map();
     stopPagination();
@@ -208,14 +208,14 @@ function renderScoreboard(isPaging = false) {
       <td>${start + index + 1}</td>
       <td>${score.athleteName}</td>
       <td>${score.athleteClub}</td>
+      <td>${score.category || "--"}</td>
       <td>${score.competitorNumber || "--"}</td>
       <td>${score.grade || "--"}</td>
       <td>${formatScore(score.total)}</td>
     `;
     detailRow.innerHTML = `
-      <td colspan="6">
+      <td colspan="7">
         <div class="stream-breakdown">
-          <span>Cat: <strong>${score.category || "--"}</strong></span>
           <span>Art: <strong>${formatScore(score.artistry)}</strong></span>
           <span>Exe: <strong>${formatScore(score.execution)}</strong></span>
           <span>Dif: <strong>${formatScore(score.difficulty)}</strong></span>

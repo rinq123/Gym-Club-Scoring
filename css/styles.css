@@ -821,27 +821,32 @@ table {
 
 .stream-scoreboard .display-table th:nth-child(2),
 .stream-scoreboard .display-table td:nth-child(2) {
-  width: 36%;
+  width: 31%;
 }
 
 .stream-scoreboard .display-table th:nth-child(3),
 .stream-scoreboard .display-table td:nth-child(3) {
-  width: 16%;
+  width: 14%;
 }
 
 .stream-scoreboard .display-table th:nth-child(4),
 .stream-scoreboard .display-table td:nth-child(4) {
-  width: 12%;
+  width: 16%;
 }
 
 .stream-scoreboard .display-table th:nth-child(5),
 .stream-scoreboard .display-table td:nth-child(5) {
-  width: 12%;
+  width: 10%;
 }
 
 .stream-scoreboard .display-table th:nth-child(6),
 .stream-scoreboard .display-table td:nth-child(6) {
-  width: 18%;
+  width: 10%;
+}
+
+.stream-scoreboard .display-table th:nth-child(7),
+.stream-scoreboard .display-table td:nth-child(7) {
+  width: 13%;
 }
 
 .stream-scoreboard .display-table td:last-child {
