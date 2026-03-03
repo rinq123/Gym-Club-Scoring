@@ -1,92 +1,111 @@
-# Eclipse Invitational Scoring (Gym Club Scoring)
+# Eclipse Invitational Scoring
 
-Frontend-only gymnastics competition scoring system with Firebase (Firestore + Auth) and three views:
-- **Admin Panel** (`admin.html`) — manage competitions, gymnasts, scores, and stream state.
-- **Public Scoreboard** (`index.html`) — spectator view with manual refresh.
-- **Stream Display** (`stream.html`) — big screen / live stream layout with multiple modes.
+Frontend-only gymnastics competition scoring app using Firebase (Firestore + Auth) and three pages:
+- `admin.html` - admin control panel
+- `index.html` - public scoreboard
+- `stream.html` - big-screen stream display
 
-This project is intentionally **no backend** (static HTML/CSS/JS) and relies on Firebase for storage/auth.
-
----
-
-## Live Demos
-
-- Admin Panel: https://eclipse-invitational.web.app/admin.html
-- Public Scoreboard: https://eclipse-invitational.web.app/index.html
-- Stream Display: https://eclipse-invitational.web.app/stream.html
+No custom backend server is used. The app is static HTML/CSS/JS with Firebase as the data/auth layer.
 
 ---
 
-## Key Features
+## Live URLs
 
-- Competition manager (create, archive, delete, set active).
-- Gymnast(s) roster with **Category** + **Grade** tags and **Comp No.**
-- Score entry with **Artistry, Execution, Difficulty, Penalties, Total** (no calculations).
-- Live stream modes: Welcome, Break, Announcement, Spotlight, Scoreboard, Mix.
-- Auto-pagination on stream scoreboard (7 rows per page).
-- CSV export for Gymnast(s) and Scores.
-- Public scoreboard **manual refresh only** (reduces read usage).
+- Admin: `https://eclipse-invitational.web.app/admin.html`
+- Public: `https://eclipse-invitational.web.app/index.html`
+- Stream: `https://eclipse-invitational.web.app/stream.html`
+
+---
+
+## Features
+
+- Competition manager:
+  - Set active competition
+  - Create new
+  - Rename
+  - Archive
+  - Delete selected
+- Manage Gymnast(s):
+  - Name, club, Comp No.
+  - Exactly one category tag and one grade tag
+  - Edit and delete
+- Score entry:
+  - Fields: Artistry, Execution, Difficulty, Penalties, Total
+  - No in-app calculations (scores can come from external spreadsheet workflow)
+  - Category dropdown includes `All` (default)
+  - Grade filter for gymnast selection
+  - Gymnast search filter in score panel
+- Stream controls:
+  - Modes: Welcome, Idle/Break, Scoreboard, Mix, Announcement, Spotlight
+  - Performer search filter
+  - Scoreboard auto-pagination (7 rows per page)
+- Exports:
+  - Export Gymnast(s) CSV
+  - Export Scores CSV
+- Public page:
+  - Manual refresh button only (no automatic Firestore refresh on page load/reload)
+  - Local cached snapshot shown until refresh is pressed
+  - Category and club filters
+- Admin list search:
+  - Search Gymnast(s) list
+  - Search Recent Entries list
 
 ---
 
 ## Project Structure
 
-```
-admin.html          Admin panel
-index.html          Public scoreboard (manual refresh)
-stream.html         Stream/big-screen display
-css/styles.css      Shared styles
-js/admin.js         Admin logic
-js/public.js        Public scoreboard logic
-js/stream.js        Stream display logic
-js/firebase.js      Firebase initialization
-firestore.rules     Security rules
-firebase.json       Hosting config
+```txt
+admin.html
+index.html
+stream.html
+css/styles.css
+js/admin.js
+js/public.js
+js/stream.js
+js/firebase.js
+firestore.rules
+firebase.json
 ```
 
 ---
 
-## Firebase Setup (Required)
+## Firebase Setup
 
-1. **Create Firebase project**
-2. **Enable Firestore**
-3. **Enable Authentication**
-   - Use Email/Password
-   - Create admin users in Firebase Auth (email + PIN as password)
-4. **Update `js/firebase.js`**
-   - Replace config values with your project’s web config.
+1. Create a Firebase project.
+2. Enable Firestore.
+3. Enable Authentication:
+   - Provider: Email/Password
+   - Create admin users (email + PIN/password).
+4. Put your Firebase web config into `js/firebase.js`.
+5. Set Firestore rules (`firestore.rules`) with your admin emails in `isAdmin()`.
+6. Deploy:
 
-5. **Update `firestore.rules`**
-   - Add your admin emails to the allowed list:
-     ```js
-     function isAdmin() {
-       return request.auth != null
-         && request.auth.token.email in [
-           "eclipse@freedom-leisure.co.uk",
-           "eclipse.gymnastics@yahoo.co.uk"
-         ];
-     }
-     ```
-6. **Deploy rules + hosting**
-   ```
-   firebase deploy --only firestore:rules,hosting
-   ```
-
----
-
-## Security Model (Current)
-
-- **Public read:** `settingsPublic`, `competitions/*/scores`, `competitions/*/streamState`
-- **Admin-only:** everything else (including `athletes`)
-- Admins are validated by Firebase Auth **email+PIN**
-
-> Note: The public scoreboard uses only Firestore reads and is **manual refresh**.
-
----
-
-## Data Model (Firestore)
-
+```bash
+firebase deploy --only firestore:rules,hosting
 ```
+
+---
+
+## Security Model
+
+- Public read:
+  - `settingsPublic/current`
+  - `competitions/{id}/scores/*`
+  - `competitions/{id}/streamState/current`
+- Admin-only:
+  - all writes
+  - competition settings
+  - athletes
+  - root admin documents
+- Admin access uses Firebase Auth (email + PIN/password).
+
+Note: public page is manual refresh to reduce read usage.
+
+---
+
+## Firestore Data Model
+
+```txt
 settings/current
   activeCompetitionId
 
@@ -113,6 +132,7 @@ competitions/{id}/athletes/{athleteId}
   categoryTags[]
   gradeTags[]
   createdAt
+  updatedAt
 
 competitions/{id}/scores/{scoreId}
   athleteId
@@ -129,7 +149,7 @@ competitions/{id}/scores/{scoreId}
   timestamp
 
 competitions/{id}/streamState/current
-  mode (welcome | idle | announcement | spotlight | scoreboard | mix)
+  mode
   performerId
   performerName
   performerClub
@@ -142,84 +162,75 @@ competitions/{id}/streamState/current
 
 ---
 
-## Usage Guide
+## Admin Usage
 
-### Admin Panel (`admin.html`)
-1. **Login** with email + PIN (Firebase Auth).
-2. **Competition Manager**
-   - Create / Set Active / Archive / Delete.
-3. **Manage Gymnast(s)**
-   - Enter name, club, Comp No., and tag **exactly one** category + grade.
-4. **Enter Score**
-   - Select category and gymnast.
-   - Fill Artistry, Execution, Difficulty, Penalties, Total.
-5. **Stream Controls**
-   - Set mode (Welcome, Break, Announcement, Spotlight, Scoreboard, Mix).
-6. **Export**
-   - Export gymnasts or scores to CSV.
+1. Log in on `admin.html` with admin email + PIN.
+2. Pick the active competition in Competition Manager.
+3. Add gymnasts in Manage Gymnast(s).
+4. Enter scores in Enter Score.
+   - Use `All` category default or pick a specific category.
+   - Optionally filter by grade.
+   - Use search to find gymnast quickly.
+5. Control stream mode in Stream Controls.
+6. Export CSVs if needed.
 
-### Public Scoreboard (`index.html`)
-- **Manual refresh only**: click **Refresh** to pull the latest scores.
-- Filter by Category and Club.
-- Cached results stored in `localStorage` until refreshed.
+---
 
-### Stream Display (`stream.html`)
-- Designed for large displays.
-- Auto page‑flip for long scoreboards.
-- Spotlight shows current gymnast and their latest score.
+## Public Usage
+
+- Open `index.html`.
+- Press `Refresh` to pull latest scores.
+- Use category/club filters.
+
+---
+
+## Stream Usage
+
+- Open `stream.html` on projector/screen.
+- Stream updates live from admin changes.
+- Scoreboard pages automatically when many rows exist.
 
 ---
 
 ## Local Development
 
-Because ES Modules are used, open with a local server (not file://).
+Use a local server (ES modules do not work with `file://`):
 
-Example (PowerShell):
-```
+```bash
 py -m http.server 8080
 ```
 
-Then visit:
-```
-http://localhost:8080/index.html
-http://localhost:8080/admin.html
-http://localhost:8080/stream.html
-```
+Then open:
+- `http://localhost:8080/admin.html`
+- `http://localhost:8080/index.html`
+- `http://localhost:8080/stream.html`
 
 ---
 
-## Deployment
+## Deploy Notes
 
-Recommended:
-```
-firebase deploy --only hosting,firestore:rules
-```
+- Full deploy:
+  - `firebase deploy`
+- Only hosting + rules:
+  - `firebase deploy --only hosting,firestore:rules`
 
-If you deploy often during development, it’s fine — Firestore costs stay within free quotas unless usage is high.
+For rapid iteration, targeted deploy is usually better.
 
 ---
 
 ## Troubleshooting
 
-- **“No eligible gymnast(s)”**
-  - They already have a score in that category or are pending after save.
-- **Public page looks stale**
-  - Click **Refresh** (manual refresh only).
-- **Admin can’t write**
-  - Ensure Firebase Auth user email is listed in `firestore.rules`.
-- **Stream not changing**
-  - Check that `streamState` is being updated for the active competition.
-
----
-
-## Notes / Future Enhancements
-
-- Optional App Check for better protection against abuse.
-- Optional server‑side snapshot doc to reduce public reads.
-- Mobile‑optimized card view for public scoreboard.
+- "No eligible gymnast(s)":
+  - gymnast already scored in that category or is currently pending score write.
+- Public page looks stale:
+  - press Refresh (manual refresh design).
+- Admin cannot write:
+  - check Auth user and email allowlist in Firestore rules.
+- Stream not changing:
+  - verify active competition and stream state updates in Firestore.
 
 ---
 
 ## License
 
-Private project for Eclipse Gymnastics Invitational. All rights reserved.
+Private project for Eclipse Gymnastics Invitational.
