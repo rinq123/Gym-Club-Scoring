@@ -38,7 +38,11 @@ No custom backend server is used. The app is static HTML/CSS/JS with Firebase as
 - Stream controls:
   - Modes: Welcome, Idle/Break, Scoreboard, Mix, Announcement, Spotlight
   - Performer search filter
-  - Scoreboard auto-pagination (7 rows per page)
+  - Scoreboard auto-pagination (5 rows per page) in `Scoreboard` and `Mix`
+  - Stream scoreboard uses a 2-line row layout for readability:
+    - Main row: Rank, Gymnast(s), Club, Category, Comp No., Grade, Total
+    - Detail row: Artistry, Execution, Difficulty, Penalties
+  - Spotlight mode auto-fits long performer names/meta/score to viewport (no manual zoom)
 - Exports:
   - Export Gymnast(s) CSV
   - Export Scores CSV
@@ -46,6 +50,9 @@ No custom backend server is used. The app is static HTML/CSS/JS with Firebase as
   - Manual refresh button only (no automatic Firestore refresh on page load/reload)
   - Local cached snapshot shown until refresh is pressed
   - Category and club filters
+  - Smooth fade-out highlight when scores update
+- Scoreboard update animation:
+  - Smooth highlight fade transitions on both public and stream scoreboards
 - Admin list search:
   - Search Gymnast(s) list
   - Search Recent Entries list
@@ -188,7 +195,8 @@ competitions/{id}/streamState/current
 
 - Open `stream.html` on projector/screen.
 - Stream updates live from admin changes.
-- Scoreboard pages automatically when many rows exist.
+- Scoreboard pages automatically (5 rows/page) when many rows exist.
+- Spotlight view auto-scales long names and score text to stay visible at 1080p.
 
 ---
 
