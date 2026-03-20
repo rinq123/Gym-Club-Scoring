@@ -38,7 +38,16 @@ No custom backend server is used. The app is static HTML/CSS/JS with Firebase as
 - Stream controls:
   - Modes: Welcome, Idle/Break, Scoreboard, Mix, Announcement, Spotlight
   - Performer search filter
-  - Scoreboard auto-pagination (5 rows per page) in `Scoreboard` and `Mix`
+  - Stream display settings (live): rows mode, font scale, page duration
+    - Default preset: `Auto` rows, `100%` font, `7s` page duration
+    - Rows mode: `Auto` or `Manual`
+    - Manual rows range: `4` to `10`
+    - Font scale range: `85%` to `120%`
+    - Page duration range: `4s` to `12s`
+  - Auto rows by screen height:
+    - `< 1300px`: `5`
+    - `1300px - 1899px`: `6`
+    - `>= 1900px`: `7`
   - Stream scoreboard uses a 2-line row layout for readability:
     - Main row: Rank, Gymnast(s), Club, Category, Comp No., Grade, Total
     - Detail row: Artistry, Execution, Difficulty, Penalties
@@ -164,6 +173,11 @@ competitions/{id}/streamState/current
   performerCategory
   performerGrade
   mixSeconds
+  displaySettings
+    rowsMode
+    manualRows
+    fontScale
+    pageDurationSeconds
   updatedAt
 ```
 
@@ -179,7 +193,13 @@ competitions/{id}/streamState/current
    - Optionally filter by grade.
    - Use search to find gymnast quickly.
 5. Control stream mode in Stream Controls.
-6. Export CSVs if needed.
+6. Configure Stream Display Settings and click `Apply Display Settings` to push live:
+   - Rows mode (`Auto`/`Manual`)
+   - Manual rows (`4` to `10`)
+   - Font scale (`85%` to `120%`)
+   - Page duration (`4s` to `12s`)
+7. Use `Reset Defaults` to restore default stream display settings.
+8. Export CSVs if needed.
 
 ---
 
@@ -195,7 +215,13 @@ competitions/{id}/streamState/current
 
 - Open `stream.html` on projector/screen.
 - Stream updates live from admin changes.
-- Scoreboard pages automatically (5 rows/page) when many rows exist.
+- Scoreboard pages automatically; row count depends on display settings:
+  - Auto: `5/6/7` by screen height
+  - Manual: configured `4-10` rows
+- Recommended for first run:
+  - keep `Rows Per Page = Auto`
+  - keep `Font Scale = 100%`
+  - adjust only if your venue screen needs larger or denser rows
 - Spotlight view auto-scales long names and score text to stay visible at 1080p.
 
 ---
@@ -221,6 +247,13 @@ Then open:
   - `firebase deploy`
 - Only hosting + rules:
   - `firebase deploy --only hosting,firestore:rules`
+- Only hosting (recommended for UI-only changes):
+  - `firebase deploy --only hosting`
+
+Quick guidance:
+- Use `--only hosting` when you changed HTML/CSS/JS only.
+- Use `--only hosting,firestore:rules` when you changed UI plus Firestore rules.
+- Use full deploy only when you intentionally changed additional Firebase resources.
 
 For rapid iteration, targeted deploy is usually better.
 
@@ -236,6 +269,8 @@ For rapid iteration, targeted deploy is usually better.
   - check Auth user and email allowlist in Firestore rules.
 - Stream not changing:
   - verify active competition and stream state updates in Firestore.
+- Stream display settings not applying:
+  - click `Apply Display Settings` in admin and confirm stream status line updates.
 
 ---
 
