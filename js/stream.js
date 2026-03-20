@@ -203,6 +203,13 @@ function toDate(value) {
 }
 
 function getRowsPerPage() {
+  const height = window.innerHeight || 1080;
+  if (height >= 1900) {
+    return 7;
+  }
+  if (height >= 1300) {
+    return 6;
+  }
   return 5;
 }
 
@@ -517,6 +524,10 @@ renderStream();
 window.addEventListener("resize", () => {
   if (streamState.mode === "spotlight") {
     scheduleSpotlightFit();
+  }
+  if (streamState.mode === "scoreboard" || streamState.mode === "mix") {
+    pageIndex = 0;
+    renderScoreboard();
   }
 });
 window.addEventListener("load", scheduleSpotlightFit);

@@ -826,13 +826,13 @@ table {
 }
 
 .stream-scoreboard .display-table {
-  font-size: clamp(1rem, 1.45vw, 1.6rem);
+  font-size: clamp(0.86rem, 0.95vw, 1.2rem);
   table-layout: fixed;
 }
 
 .stream-scoreboard .display-table th,
 .stream-scoreboard .display-table td {
-  padding: 0.6rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   white-space: nowrap;
 }
 
@@ -876,7 +876,7 @@ table {
 }
 
 .stream-scoreboard .display-table td:last-child {
-  font-size: clamp(1.25rem, 2vw, 2rem);
+  font-size: clamp(1.05rem, 1.35vw, 1.5rem);
   font-weight: 700;
   color: #f8f7ff;
 }
@@ -886,17 +886,17 @@ table {
 }
 
 .stream-scoreboard .stream-score-detail td {
-  padding-top: 0.3rem;
-  padding-bottom: 0.65rem;
+  padding-top: 0.2rem;
+  padding-bottom: 0.5rem;
   border-top: none;
 }
 
 .stream-breakdown {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
   align-items: center;
-  font-size: clamp(0.78rem, 1.05vw, 1.05rem);
+  font-size: clamp(0.7rem, 0.8vw, 0.95rem);
   color: #c6a8ff;
 }
 
@@ -1177,7 +1177,7 @@ table {
 }
 
 .stream-scoreboard {
-  padding: 1.5rem;
+  padding: 1.2rem;
   border-radius: 20px;
   background: rgba(20, 20, 35, 0.9);
   box-shadow: 0 24px 60px rgba(8, 5, 18, 0.45), 0 0 28px rgba(124, 77, 255, 0.2);
@@ -1186,7 +1186,7 @@ table {
 
 .stream-scoreboard .section-title {
   color: #f8f7ff;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   letter-spacing: 1px;
 }
 
