@@ -314,6 +314,14 @@ label select:focus {
   border-color: var(--accent);
 }
 
+.field-note {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .scoreboard-header {
   display: flex;
   align-items: center;
@@ -826,13 +834,13 @@ table {
 }
 
 .stream-scoreboard .display-table {
-  font-size: clamp(0.86rem, 0.95vw, 1.2rem);
+  font-size: calc(0.86rem * var(--stream-font-scale, 1));
   table-layout: fixed;
 }
 
 .stream-scoreboard .display-table th,
 .stream-scoreboard .display-table td {
-  padding: 0.45rem 0.6rem;
+  padding: calc(0.45rem * var(--stream-font-scale, 1)) calc(0.6rem * var(--stream-font-scale, 1));
   white-space: nowrap;
 }
 
@@ -876,7 +884,7 @@ table {
 }
 
 .stream-scoreboard .display-table td:last-child {
-  font-size: clamp(1.05rem, 1.35vw, 1.5rem);
+  font-size: calc(1.05rem * var(--stream-font-scale, 1));
   font-weight: 700;
   color: #f8f7ff;
 }
@@ -893,10 +901,10 @@ table {
 
 .stream-breakdown {
   display: flex;
-  gap: 0.75rem;
+  gap: calc(0.75rem * var(--stream-font-scale, 1));
   flex-wrap: wrap;
   align-items: center;
-  font-size: clamp(0.7rem, 0.8vw, 0.95rem);
+  font-size: calc(0.7rem * var(--stream-font-scale, 1));
   color: #c6a8ff;
 }
 
@@ -1177,6 +1185,7 @@ table {
 }
 
 .stream-scoreboard {
+  --stream-font-scale: 1;
   padding: 1.2rem;
   border-radius: 20px;
   background: rgba(20, 20, 35, 0.9);
@@ -1186,7 +1195,7 @@ table {
 
 .stream-scoreboard .section-title {
   color: #f8f7ff;
-  font-size: 1.15rem;
+  font-size: calc(1.15rem * var(--stream-font-scale, 1));
   letter-spacing: 1px;
 }
 

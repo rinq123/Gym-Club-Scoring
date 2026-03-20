@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=45">
+        <link rel="stylesheet" href="css/styles.css?v=49">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -162,6 +162,31 @@
                             <button type="button" class="btn ghost" data-stream="mix">Idle + Scoreboard Mix</button>
                             <button type="button" class="btn ghost" data-stream="announcement">Announcement</button>
                         </div>
+                        <div class="tag-group">
+                            <p class="tag-title">Scoreboard Display Settings</p>
+                            <div class="form-grid">
+                                <label class="field">Rows Per Page
+                                    <select id="stream-rows-mode">
+                                        <option value="auto">Auto (Recommended)</option>
+                                        <option value="manual">Manual</option>
+                                    </select>
+                                </label>
+                                <label class="field">Manual Rows
+                                    <input type="number" id="stream-manual-rows" min="4" max="10" step="1" value="5" disabled>
+                                </label>
+                                <label class="field">Font Scale
+                                    <input type="range" id="stream-font-scale" min="85" max="120" step="1" value="100">
+                                    <span id="stream-font-scale-value" class="field-note">100%</span>
+                                </label>
+                                <label class="field">Page Duration (seconds)
+                                    <input type="number" id="stream-page-duration" min="4" max="12" step="1" value="7">
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn ghost" id="stream-display-apply">Apply Display Settings</button>
+                                <button type="button" class="btn ghost" id="stream-display-reset">Reset Defaults</button>
+                            </div>
+                        </div>
                         <p id="stream-status" class="footer-note">Mode: Idle</p>
                     </div>
                 </section>
@@ -190,11 +215,12 @@
                     <p><strong>Manage Gymnast(s):</strong> Add competitor number, club, and tags. Edit to fix typos. Deleting a roster entry removes their scores.</p>
                     <p><strong>Enter Score:</strong> Pick a category, select gymnast(s), then enter artistry, execution, difficulty, penalties, and total score.</p>
                     <p><strong>Stream Controls:</strong> Choose a mode (Welcome, Idle, Scoreboard, Mix, Announcement) and select the current performer when spotlighting.</p>
+                    <p><strong>Display Settings:</strong> Tune rows, font scale, and page duration for the venue screen, then apply live.</p>
                     <p><strong>Lock Admin:</strong> Use this when stepping away to re‑enable the PIN gate.</p>
                     <p><strong>Clear Competition Data:</strong> Wipes gymnast(s) and scores for the active competition. Use only when starting fresh.</p>
                 </div>
             </div>
         </div>
-        <script type="module" src="js/admin.js?v=33"></script>
+        <script type="module" src="js/admin.js?v=34"></script>
     </body>
 </html> 

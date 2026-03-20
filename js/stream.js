@@ -27,6 +27,12 @@ const DEFAULT_SETTINGS = {
     "IDP 2"
   ]
 };
+const DEFAULT_DISPLAY_SETTINGS = {
+  rowsMode: "auto",
+  manualRows: 5,
+  fontScale: 1,
+  pageDurationSeconds: 7
+};
 const DEFAULT_STREAM_STATE = {
   mode: "welcome",
   performerId: null,
@@ -35,7 +41,8 @@ const DEFAULT_STREAM_STATE = {
   performerNumber: null,
   performerCategory: null,
   performerGrade: null,
-  mixSeconds: 20
+  mixSeconds: 20,
+  displaySettings: { ...DEFAULT_DISPLAY_SETTINGS }
 };
 
 const settingsRef = doc(db, "settingsPublic", "current");
@@ -62,7 +69,7 @@ const scoreboardWrap = scoreboardPanel ? scoreboardPanel.querySelector(".table-w
 
 let settings = { ...DEFAULT_SETTINGS };
 let scores = [];
-let streamState = { ...DEFAULT_STREAM_STATE };
+let streamState = normalizeStreamState();
 let mixTimer = null;
 let mixPhase = "idle";
 let lastMixSeconds = null;
@@ -75,6 +82,7 @@ let pageTimer = null;
 let lastPageCount = 1;
 let paginationEnabled = true;
 let spotlightFitRaf = null;
+let lastPageDurationMs = null;
 
 const SPOTLIGHT_FIT_BOUNDS = {
   name: { max: 148, min: 48 },
@@ -202,7 +210,42 @@ function toDate(value) {
   return new Date(value);
 }
 
-function getRowsPerPage() {
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeDisplaySettings(raw = {}) {
+  const rowsMode = raw?.rowsMode === "manual" ? "manual" : "auto";
+  const manualRows = Math.round(clampNumber(raw?.manualRows, 4, 10, DEFAULT_DISPLAY_SETTINGS.manualRows));
+  const fontScaleRaw = clampNumber(raw?.fontScale, 0.85, 1.2, DEFAULT_DISPLAY_SETTINGS.fontScale);
+  const fontScale = Number(fontScaleRaw.toFixed(2));
+  const pageDurationSeconds = Math.round(
+    clampNumber(raw?.pageDurationSeconds, 4, 12, DEFAULT_DISPLAY_SETTINGS.pageDurationSeconds)
+  );
+  return {
+    rowsMode,
+    manualRows,
+    fontScale,
+    pageDurationSeconds
+  };
+}
+
+function normalizeStreamState(raw = {}) {
+  return {
+    ...DEFAULT_STREAM_STATE,
+    ...raw,
+    displaySettings: normalizeDisplaySettings(raw?.displaySettings || DEFAULT_DISPLAY_SETTINGS)
+  };
+}
+
+function getRowsPerPage(displaySettings = DEFAULT_DISPLAY_SETTINGS) {
+  if (displaySettings.rowsMode === "manual") {
+    return displaySettings.manualRows;
+  }
   const height = window.innerHeight || 1080;
   if (height >= 1900) {
     return 7;
@@ -229,6 +272,7 @@ function stopPagination() {
     clearInterval(pageTimer);
     pageTimer = null;
   }
+  lastPageDurationMs = null;
 }
 
 function setPaginationEnabled(enabled) {
@@ -243,24 +287,31 @@ function setPaginationEnabled(enabled) {
   }
 }
 
-function schedulePagination(totalPages) {
+function schedulePagination(totalPages, pageDurationSeconds) {
   if (!paginationEnabled || totalPages <= 1) {
     stopPagination();
     lastPageCount = totalPages;
     return;
   }
-  if (pageTimer && lastPageCount === totalPages) {
+  const durationMs = Math.round(clampNumber(pageDurationSeconds, 4, 12, DEFAULT_DISPLAY_SETTINGS.pageDurationSeconds) * 1000);
+  if (pageTimer && lastPageCount === totalPages && lastPageDurationMs === durationMs) {
     return;
   }
   stopPagination();
   lastPageCount = totalPages;
+  lastPageDurationMs = durationMs;
   pageTimer = setInterval(() => {
     pageIndex = (pageIndex + 1) % totalPages;
     renderScoreboard(true);
-  }, 7000);
+  }, durationMs);
 }
 
 function renderScoreboard(isPaging = false) {
+  const displaySettings = normalizeDisplaySettings(streamState.displaySettings);
+  if (scoreboardPanel) {
+    scoreboardPanel.style.setProperty("--stream-font-scale", String(displaySettings.fontScale));
+  }
+
   scoreRows.innerHTML = "";
   const rows = scores
     .map((score) => {
@@ -301,7 +352,7 @@ function renderScoreboard(isPaging = false) {
     return;
   }
 
-  const rowsPerPage = getRowsPerPage();
+  const rowsPerPage = getRowsPerPage(displaySettings);
   const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
   if (!paginationEnabled) {
     pageIndex = 0;
@@ -350,7 +401,7 @@ function renderScoreboard(isPaging = false) {
     nextCache.set(score.id, score.total);
   });
   scoreCache = nextCache;
-  schedulePagination(totalPages);
+  schedulePagination(totalPages, displaySettings.pageDurationSeconds);
   if (isPaging) {
     triggerPageFlip();
   }
@@ -460,13 +511,13 @@ function triggerUpdating() {
 function bindCompetition(competitionId) {
   if (!competitionId) {
     scores = [];
-    streamState = { ...DEFAULT_STREAM_STATE };
+    streamState = normalizeStreamState();
     pageIndex = 0;
     renderStream();
     return;
   }
   scores = [];
-  streamState = { ...DEFAULT_STREAM_STATE };
+  streamState = normalizeStreamState();
   pageIndex = 0;
   triggerUpdating();
   renderStream();
@@ -488,8 +539,8 @@ function bindCompetition(competitionId) {
 
   unsubStream = onSnapshot(streamRef, (snap) => {
     streamState = snap.exists()
-      ? { ...DEFAULT_STREAM_STATE, ...snap.data() }
-      : { ...DEFAULT_STREAM_STATE };
+      ? normalizeStreamState(snap.data())
+      : normalizeStreamState();
     renderStream();
   });
 }

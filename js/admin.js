@@ -60,6 +60,13 @@ const streamPerformer = document.querySelector("#stream-performer");
 const streamPerformerSearchInput = document.querySelector("#stream-performer-search");
 const streamStatus = document.querySelector("#stream-status");
 const streamButtons = document.querySelectorAll("[data-stream]");
+const streamRowsModeSelect = document.querySelector("#stream-rows-mode");
+const streamManualRowsInput = document.querySelector("#stream-manual-rows");
+const streamFontScaleInput = document.querySelector("#stream-font-scale");
+const streamFontScaleValue = document.querySelector("#stream-font-scale-value");
+const streamPageDurationInput = document.querySelector("#stream-page-duration");
+const streamDisplayApplyBtn = document.querySelector("#stream-display-apply");
+const streamDisplayResetBtn = document.querySelector("#stream-display-reset");
 const resetDemoBtn = document.querySelector("#reset-demo");
 const lockAdminBtn = document.querySelector("#lock-admin");
 const authGate = document.querySelector("#auth-gate");
@@ -97,6 +104,12 @@ const competitionsCol = collection(db, "competitions");
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
 let scores = [];
+const DEFAULT_DISPLAY_SETTINGS = {
+  rowsMode: "auto",
+  manualRows: 5,
+  fontScale: 1,
+  pageDurationSeconds: 7
+};
 const DEFAULT_STREAM_STATE = {
   mode: "welcome",
   performerId: null,
@@ -105,9 +118,10 @@ const DEFAULT_STREAM_STATE = {
   performerNumber: null,
   performerCategory: null,
   performerGrade: null,
-  mixSeconds: 20
+  mixSeconds: 20,
+  displaySettings: { ...DEFAULT_DISPLAY_SETTINGS }
 };
-let streamState = { ...DEFAULT_STREAM_STATE };
+let streamState = normalizeStreamState();
 let editingAthleteId = null;
 let editingScoreId = null;
 let editingScore = null;
@@ -328,6 +342,7 @@ async function createCompetition(name, { setActive = true } = {}) {
   }, { merge: true });
   await setDoc(refs.streamRef, {
     ...DEFAULT_STREAM_STATE,
+    displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
     updatedAt: serverTimestamp()
   }, { merge: true });
 
@@ -490,12 +505,14 @@ function bindActiveCompetition(id) {
 
   activeUnsubscribers.push(onSnapshot(activeStreamRef, (snap) => {
     if (!snap.exists()) {
-      streamState = { ...DEFAULT_STREAM_STATE };
+      streamState = normalizeStreamState();
       updateStreamStatus();
+      renderStreamDisplayControls();
       return;
     }
-    streamState = { ...DEFAULT_STREAM_STATE, ...snap.data() };
+    streamState = normalizeStreamState(snap.data());
     updateStreamStatus();
+    renderStreamDisplayControls();
     renderStreamPerformerOptions();
   }));
 }
@@ -561,6 +578,69 @@ function normalizeSettings(raw) {
     },
     changed
   };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeDisplaySettings(raw = {}) {
+  const rowsMode = raw?.rowsMode === "manual" ? "manual" : "auto";
+  const manualRows = Math.round(clampNumber(raw?.manualRows, 4, 10, DEFAULT_DISPLAY_SETTINGS.manualRows));
+  const fontScaleRaw = clampNumber(raw?.fontScale, 0.85, 1.2, DEFAULT_DISPLAY_SETTINGS.fontScale);
+  const fontScale = Number(fontScaleRaw.toFixed(2));
+  const pageDurationSeconds = Math.round(
+    clampNumber(raw?.pageDurationSeconds, 4, 12, DEFAULT_DISPLAY_SETTINGS.pageDurationSeconds)
+  );
+  return {
+    rowsMode,
+    manualRows,
+    fontScale,
+    pageDurationSeconds
+  };
+}
+
+function normalizeStreamState(raw = {}) {
+  return {
+    ...DEFAULT_STREAM_STATE,
+    ...raw,
+    displaySettings: normalizeDisplaySettings(raw?.displaySettings || DEFAULT_DISPLAY_SETTINGS)
+  };
+}
+
+function renderStreamDisplayControls() {
+  if (!streamRowsModeSelect || !streamManualRowsInput || !streamFontScaleInput || !streamPageDurationInput) {
+    return;
+  }
+  const displaySettings = normalizeDisplaySettings(streamState.displaySettings);
+  streamRowsModeSelect.value = displaySettings.rowsMode;
+  streamManualRowsInput.value = String(displaySettings.manualRows);
+  streamManualRowsInput.disabled = displaySettings.rowsMode !== "manual";
+  streamFontScaleInput.value = String(Math.round(displaySettings.fontScale * 100));
+  if (streamFontScaleValue) {
+    streamFontScaleValue.textContent = `${Math.round(displaySettings.fontScale * 100)}%`;
+  }
+  streamPageDurationInput.value = String(displaySettings.pageDurationSeconds);
+}
+
+function getDisplaySettingsFromControls() {
+  const rowsMode = streamRowsModeSelect?.value === "manual" ? "manual" : "auto";
+  const manualRows = streamManualRowsInput ? Number(streamManualRowsInput.value) : DEFAULT_DISPLAY_SETTINGS.manualRows;
+  const fontScale = streamFontScaleInput ? Number(streamFontScaleInput.value) / 100 : DEFAULT_DISPLAY_SETTINGS.fontScale;
+  const pageDurationSeconds = streamPageDurationInput
+    ? Number(streamPageDurationInput.value)
+    : DEFAULT_DISPLAY_SETTINGS.pageDurationSeconds;
+
+  return normalizeDisplaySettings({
+    rowsMode,
+    manualRows,
+    fontScale,
+    pageDurationSeconds
+  });
 }
 
 function lockUI() {
@@ -947,10 +1027,30 @@ function updateStreamStatus() {
     streamState.mode === "spotlight" ? "Spotlight" :
     streamState.mode === "welcome" ? "Welcome Screen" :
     streamState.mode === "announcement" ? "Announcement" : "Idle";
-  streamStatus.textContent = `Mode: ${modeLabel}`;
+  const displaySettings = normalizeDisplaySettings(streamState.displaySettings);
+  const rowsLabel = displaySettings.rowsMode === "manual"
+    ? `Rows ${displaySettings.manualRows}`
+    : "Rows Auto";
+  const fontLabel = `Font ${Math.round(displaySettings.fontScale * 100)}%`;
+  const durationLabel = `Page ${displaySettings.pageDurationSeconds}s`;
+  streamStatus.textContent = `Mode: ${modeLabel} • ${rowsLabel} • ${fontLabel} • ${durationLabel}`;
   streamButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.stream === streamState.mode);
   });
+}
+
+async function applyStreamDisplaySettings(nextSettings) {
+  if (!ensureActiveRefs()) {
+    return;
+  }
+  const normalized = normalizeDisplaySettings(nextSettings);
+  streamState = { ...streamState, displaySettings: normalized };
+  updateStreamStatus();
+  renderStreamDisplayControls();
+  await setDoc(activeStreamRef, {
+    displaySettings: normalized,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
 }
 
 function toDate(value) {
@@ -1202,6 +1302,57 @@ streamButtons.forEach((button) => {
   });
 });
 
+if (streamRowsModeSelect) {
+  streamRowsModeSelect.addEventListener("change", () => {
+    const manual = streamRowsModeSelect.value === "manual";
+    if (streamManualRowsInput) {
+      streamManualRowsInput.disabled = !manual;
+    }
+  });
+}
+
+if (streamManualRowsInput) {
+  streamManualRowsInput.addEventListener("change", () => {
+    const normalized = normalizeDisplaySettings({
+      rowsMode: streamRowsModeSelect?.value || "auto",
+      manualRows: streamManualRowsInput.value,
+      fontScale: streamFontScaleInput ? Number(streamFontScaleInput.value) / 100 : DEFAULT_DISPLAY_SETTINGS.fontScale,
+      pageDurationSeconds: streamPageDurationInput?.value || DEFAULT_DISPLAY_SETTINGS.pageDurationSeconds
+    });
+    streamManualRowsInput.value = String(normalized.manualRows);
+  });
+}
+
+if (streamFontScaleInput && streamFontScaleValue) {
+  streamFontScaleInput.addEventListener("input", () => {
+    streamFontScaleValue.textContent = `${streamFontScaleInput.value}%`;
+  });
+}
+
+if (streamPageDurationInput) {
+  streamPageDurationInput.addEventListener("change", () => {
+    const normalized = normalizeDisplaySettings({
+      rowsMode: streamRowsModeSelect?.value || "auto",
+      manualRows: streamManualRowsInput?.value || DEFAULT_DISPLAY_SETTINGS.manualRows,
+      fontScale: streamFontScaleInput ? Number(streamFontScaleInput.value) / 100 : DEFAULT_DISPLAY_SETTINGS.fontScale,
+      pageDurationSeconds: streamPageDurationInput.value
+    });
+    streamPageDurationInput.value = String(normalized.pageDurationSeconds);
+  });
+}
+
+if (streamDisplayApplyBtn) {
+  streamDisplayApplyBtn.addEventListener("click", async () => {
+    await applyStreamDisplaySettings(getDisplaySettingsFromControls());
+  });
+}
+
+if (streamDisplayResetBtn) {
+  streamDisplayResetBtn.addEventListener("click", async () => {
+    await applyStreamDisplaySettings({ ...DEFAULT_DISPLAY_SETTINGS });
+  });
+}
+
 resetDemoBtn.addEventListener("click", async () => {
   if (!window.confirm("Clear all competition data? This deletes gymnast(s) and scores for the active competition.")) {
     return;
@@ -1213,7 +1364,11 @@ resetDemoBtn.addEventListener("click", async () => {
   await deleteCollectionDocs(activeScoresCol);
   await setDoc(activeSettingsRef, { ...DEFAULT_SETTINGS, competitionName: settings.competitionName }, { merge: true });
   await syncPublicSettings({ ...DEFAULT_SETTINGS, competitionName: settings.competitionName });
-  await setDoc(activeStreamRef, { ...DEFAULT_STREAM_STATE, updatedAt: serverTimestamp() });
+  await setDoc(activeStreamRef, {
+    ...DEFAULT_STREAM_STATE,
+    displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
+    updatedAt: serverTimestamp()
+  });
   clearScoreEdit();
   clearAthleteEdit();
 });
@@ -1549,6 +1704,8 @@ const cachedEmail = localStorage.getItem(ADMIN_EMAIL_KEY);
 if (emailInput && cachedEmail) {
   emailInput.value = cachedEmail;
 }
+
+renderStreamDisplayControls();
 
 
 
