@@ -65,6 +65,9 @@ const streamManualRowsInput = document.querySelector("#stream-manual-rows");
 const streamFontScaleInput = document.querySelector("#stream-font-scale");
 const streamFontScaleValue = document.querySelector("#stream-font-scale-value");
 const streamPageDurationInput = document.querySelector("#stream-page-duration");
+const streamScoreboardCategorySelect = document.querySelector("#stream-scoreboard-category");
+const streamScoreboardGradeSelect = document.querySelector("#stream-scoreboard-grade");
+const streamScoreboardRankingModeSelect = document.querySelector("#stream-scoreboard-ranking-mode");
 const streamDisplayApplyBtn = document.querySelector("#stream-display-apply");
 const streamDisplayResetBtn = document.querySelector("#stream-display-reset");
 const resetDemoBtn = document.querySelector("#reset-demo");
@@ -110,6 +113,11 @@ const DEFAULT_DISPLAY_SETTINGS = {
   fontScale: 1,
   pageDurationSeconds: 7
 };
+const DEFAULT_SCOREBOARD_SETTINGS = {
+  category: "All",
+  grade: "All",
+  rankingMode: "overall"
+};
 const DEFAULT_STREAM_STATE = {
   mode: "welcome",
   performerId: null,
@@ -119,7 +127,8 @@ const DEFAULT_STREAM_STATE = {
   performerCategory: null,
   performerGrade: null,
   mixSeconds: 20,
-  displaySettings: { ...DEFAULT_DISPLAY_SETTINGS }
+  displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
+  scoreboardSettings: { ...DEFAULT_SCOREBOARD_SETTINGS }
 };
 let streamState = normalizeStreamState();
 let editingAthleteId = null;
@@ -343,6 +352,7 @@ async function createCompetition(name, { setActive = true } = {}) {
   await setDoc(refs.streamRef, {
     ...DEFAULT_STREAM_STATE,
     displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
+    scoreboardSettings: { ...DEFAULT_SCOREBOARD_SETTINGS },
     updatedAt: serverTimestamp()
   }, { merge: true });
 
@@ -470,6 +480,7 @@ function bindActiveCompetition(id) {
       fillSelect(scoreGradeFilterSelect, ["All", ...settings.grades], scoreGradeFilterSelect?.value || "All");
       renderTagOptions(categoryTagsContainer, settings.categories);
       renderTagOptions(gradeTagsContainer, settings.grades);
+      renderStreamDisplayControls();
       syncPublicSettings(settings);
       return;
     }
@@ -483,6 +494,7 @@ function bindActiveCompetition(id) {
     renderTagOptions(categoryTagsContainer, settings.categories);
     renderTagOptions(gradeTagsContainer, settings.grades);
     renderAthleteOptions();
+    renderStreamDisplayControls();
     syncPublicSettings(settings);
     adminTitle.textContent = settings.competitionName || DEFAULT_SETTINGS.competitionName;
     competitionNameInput.value = settings.competitionName || DEFAULT_SETTINGS.competitionName;
@@ -604,19 +616,51 @@ function normalizeDisplaySettings(raw = {}) {
   };
 }
 
+function normalizeScoreboardSettings(raw = {}, sourceSettings = settings) {
+  const availableCategories = Array.isArray(sourceSettings?.categories) && sourceSettings.categories.length
+    ? sourceSettings.categories
+    : DEFAULT_SETTINGS.categories;
+  const availableGrades = Array.isArray(sourceSettings?.grades) && sourceSettings.grades.length
+    ? sourceSettings.grades
+    : DEFAULT_SETTINGS.grades;
+  const category = raw?.category === "All" || availableCategories.includes(raw?.category)
+    ? (raw?.category || "All")
+    : "All";
+  const grade = raw?.grade === "All" || availableGrades.includes(raw?.grade)
+    ? (raw?.grade || "All")
+    : "All";
+  const rankingMode = raw?.rankingMode === "byGrade" ? "byGrade" : "overall";
+
+  return {
+    category,
+    grade,
+    rankingMode
+  };
+}
+
 function normalizeStreamState(raw = {}) {
   return {
     ...DEFAULT_STREAM_STATE,
     ...raw,
-    displaySettings: normalizeDisplaySettings(raw?.displaySettings || DEFAULT_DISPLAY_SETTINGS)
+    displaySettings: normalizeDisplaySettings(raw?.displaySettings || DEFAULT_DISPLAY_SETTINGS),
+    scoreboardSettings: normalizeScoreboardSettings(raw?.scoreboardSettings || DEFAULT_SCOREBOARD_SETTINGS)
   };
 }
 
 function renderStreamDisplayControls() {
-  if (!streamRowsModeSelect || !streamManualRowsInput || !streamFontScaleInput || !streamPageDurationInput) {
+  if (
+    !streamRowsModeSelect ||
+    !streamManualRowsInput ||
+    !streamFontScaleInput ||
+    !streamPageDurationInput ||
+    !streamScoreboardCategorySelect ||
+    !streamScoreboardGradeSelect ||
+    !streamScoreboardRankingModeSelect
+  ) {
     return;
   }
   const displaySettings = normalizeDisplaySettings(streamState.displaySettings);
+  const scoreboardSettings = normalizeScoreboardSettings(streamState.scoreboardSettings, settings);
   streamRowsModeSelect.value = displaySettings.rowsMode;
   streamManualRowsInput.value = String(displaySettings.manualRows);
   streamManualRowsInput.disabled = displaySettings.rowsMode !== "manual";
@@ -625,6 +669,9 @@ function renderStreamDisplayControls() {
     streamFontScaleValue.textContent = `${Math.round(displaySettings.fontScale * 100)}%`;
   }
   streamPageDurationInput.value = String(displaySettings.pageDurationSeconds);
+  fillSelect(streamScoreboardCategorySelect, ["All", ...settings.categories], scoreboardSettings.category);
+  fillSelect(streamScoreboardGradeSelect, ["All", ...settings.grades], scoreboardSettings.grade);
+  streamScoreboardRankingModeSelect.value = scoreboardSettings.rankingMode;
 }
 
 function getDisplaySettingsFromControls() {
@@ -641,6 +688,14 @@ function getDisplaySettingsFromControls() {
     fontScale,
     pageDurationSeconds
   });
+}
+
+function getScoreboardSettingsFromControls() {
+  return normalizeScoreboardSettings({
+    category: streamScoreboardCategorySelect?.value || "All",
+    grade: streamScoreboardGradeSelect?.value || "All",
+    rankingMode: streamScoreboardRankingModeSelect?.value || "overall"
+  }, settings);
 }
 
 function lockUI() {
@@ -1033,22 +1088,32 @@ function updateStreamStatus() {
     : "Rows Auto";
   const fontLabel = `Font ${Math.round(displaySettings.fontScale * 100)}%`;
   const durationLabel = `Page ${displaySettings.pageDurationSeconds}s`;
-  streamStatus.textContent = `Mode: ${modeLabel} • ${rowsLabel} • ${fontLabel} • ${durationLabel}`;
+  const scoreboardSettings = normalizeScoreboardSettings(streamState.scoreboardSettings, settings);
+  const categoryLabel = scoreboardSettings.category === "All" ? "Cat All" : `Cat ${scoreboardSettings.category}`;
+  const gradeLabel = scoreboardSettings.grade === "All" ? "Grade All" : `Grade ${scoreboardSettings.grade}`;
+  const rankLabel = scoreboardSettings.rankingMode === "byGrade" ? "Rank By Grade" : "Rank Overall";
+  streamStatus.textContent = `Mode: ${modeLabel} • ${rowsLabel} • ${fontLabel} • ${durationLabel} • ${categoryLabel} • ${gradeLabel} • ${rankLabel}`;
   streamButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.stream === streamState.mode);
   });
 }
 
-async function applyStreamDisplaySettings(nextSettings) {
+async function applyStreamDisplaySettings(nextSettings, nextScoreboardSettings = streamState.scoreboardSettings) {
   if (!ensureActiveRefs()) {
     return;
   }
   const normalized = normalizeDisplaySettings(nextSettings);
-  streamState = { ...streamState, displaySettings: normalized };
+  const normalizedScoreboardSettings = normalizeScoreboardSettings(nextScoreboardSettings, settings);
+  streamState = {
+    ...streamState,
+    displaySettings: normalized,
+    scoreboardSettings: normalizedScoreboardSettings
+  };
   updateStreamStatus();
   renderStreamDisplayControls();
   await setDoc(activeStreamRef, {
     displaySettings: normalized,
+    scoreboardSettings: normalizedScoreboardSettings,
     updatedAt: serverTimestamp()
   }, { merge: true });
 }
@@ -1343,13 +1408,13 @@ if (streamPageDurationInput) {
 
 if (streamDisplayApplyBtn) {
   streamDisplayApplyBtn.addEventListener("click", async () => {
-    await applyStreamDisplaySettings(getDisplaySettingsFromControls());
+    await applyStreamDisplaySettings(getDisplaySettingsFromControls(), getScoreboardSettingsFromControls());
   });
 }
 
 if (streamDisplayResetBtn) {
   streamDisplayResetBtn.addEventListener("click", async () => {
-    await applyStreamDisplaySettings({ ...DEFAULT_DISPLAY_SETTINGS });
+    await applyStreamDisplaySettings({ ...DEFAULT_DISPLAY_SETTINGS }, { ...DEFAULT_SCOREBOARD_SETTINGS });
   });
 }
 
@@ -1367,6 +1432,7 @@ resetDemoBtn.addEventListener("click", async () => {
   await setDoc(activeStreamRef, {
     ...DEFAULT_STREAM_STATE,
     displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
+    scoreboardSettings: { ...DEFAULT_SCOREBOARD_SETTINGS },
     updatedAt: serverTimestamp()
   });
   clearScoreEdit();

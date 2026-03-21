@@ -33,6 +33,11 @@ const DEFAULT_DISPLAY_SETTINGS = {
   fontScale: 1,
   pageDurationSeconds: 7
 };
+const DEFAULT_SCOREBOARD_SETTINGS = {
+  category: "All",
+  grade: "All",
+  rankingMode: "overall"
+};
 const DEFAULT_STREAM_STATE = {
   mode: "welcome",
   performerId: null,
@@ -42,7 +47,8 @@ const DEFAULT_STREAM_STATE = {
   performerCategory: null,
   performerGrade: null,
   mixSeconds: 20,
-  displaySettings: { ...DEFAULT_DISPLAY_SETTINGS }
+  displaySettings: { ...DEFAULT_DISPLAY_SETTINGS },
+  scoreboardSettings: { ...DEFAULT_SCOREBOARD_SETTINGS }
 };
 
 const settingsRef = doc(db, "settingsPublic", "current");
@@ -65,6 +71,7 @@ const performerScoreLabel = spotlightPanel ? spotlightPanel.querySelector(".stre
 const performerScoreBlock = spotlightPanel ? spotlightPanel.querySelector(".stream-score") : null;
 const spotlightSectionLabel = spotlightPanel ? spotlightPanel.querySelector(".stream-section-label") : null;
 const scoreRows = document.querySelector("#stream-score-rows");
+const scoreboardContextBadge = document.querySelector("#stream-scoreboard-context");
 const scoreboardWrap = scoreboardPanel ? scoreboardPanel.querySelector(".table-wrap") : null;
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -234,11 +241,34 @@ function normalizeDisplaySettings(raw = {}) {
   };
 }
 
+function normalizeScoreboardSettings(raw = {}, sourceSettings = settings) {
+  const availableCategories = Array.isArray(sourceSettings?.categories) && sourceSettings.categories.length
+    ? sourceSettings.categories
+    : DEFAULT_SETTINGS.categories;
+  const availableGrades = Array.isArray(sourceSettings?.grades) && sourceSettings.grades.length
+    ? sourceSettings.grades
+    : DEFAULT_SETTINGS.grades;
+  const category = raw?.category === "All" || availableCategories.includes(raw?.category)
+    ? (raw?.category || "All")
+    : "All";
+  const grade = raw?.grade === "All" || availableGrades.includes(raw?.grade)
+    ? (raw?.grade || "All")
+    : "All";
+  const rankingMode = raw?.rankingMode === "byGrade" ? "byGrade" : "overall";
+
+  return {
+    category,
+    grade,
+    rankingMode
+  };
+}
+
 function normalizeStreamState(raw = {}) {
   return {
     ...DEFAULT_STREAM_STATE,
     ...raw,
-    displaySettings: normalizeDisplaySettings(raw?.displaySettings || DEFAULT_DISPLAY_SETTINGS)
+    displaySettings: normalizeDisplaySettings(raw?.displaySettings || DEFAULT_DISPLAY_SETTINGS),
+    scoreboardSettings: normalizeScoreboardSettings(raw?.scoreboardSettings || DEFAULT_SCOREBOARD_SETTINGS)
   };
 }
 
@@ -308,12 +338,13 @@ function schedulePagination(totalPages, pageDurationSeconds) {
 
 function renderScoreboard(isPaging = false) {
   const displaySettings = normalizeDisplaySettings(streamState.displaySettings);
+  const scoreboardSettings = normalizeScoreboardSettings(streamState.scoreboardSettings, settings);
   if (scoreboardPanel) {
     scoreboardPanel.style.setProperty("--stream-font-scale", String(displaySettings.fontScale));
   }
 
   scoreRows.innerHTML = "";
-  const rows = scores
+  const allRows = scores
     .map((score) => {
       const totalValue = Number(score.total);
       return {
@@ -329,8 +360,7 @@ function renderScoreboard(isPaging = false) {
         penalties: score.penalties,
         totalValue: Number.isFinite(totalValue) ? totalValue : 0
       };
-    })
-    .sort((a, b) => b.totalValue - a.totalValue);
+    });
 
   const formatScore = (value) => {
     if (value === null || value === undefined || value === "") {
@@ -343,9 +373,45 @@ function renderScoreboard(isPaging = false) {
     return numeric.toFixed(3);
   };
 
-  if (!rows.length) {
+  const gradeOrder = (settings.grades || DEFAULT_SETTINGS.grades).slice();
+  const gradeOrderMap = new Map(gradeOrder.map((grade, index) => [grade, index]));
+  const gradeIndex = (grade) => (gradeOrderMap.has(grade) ? gradeOrderMap.get(grade) : Number.MAX_SAFE_INTEGER);
+  const categoryMatch = (row) => scoreboardSettings.category === "All" || row.category === scoreboardSettings.category;
+  const gradeMatch = (row) => scoreboardSettings.grade === "All" || row.grade === scoreboardSettings.grade;
+  const filteredRows = allRows
+    .filter(categoryMatch)
+    .filter(gradeMatch);
+
+  if (scoreboardSettings.rankingMode === "byGrade") {
+    filteredRows.sort((a, b) => {
+      const byGrade = gradeIndex(a.grade) - gradeIndex(b.grade);
+      if (byGrade !== 0) {
+        return byGrade;
+      }
+      return b.totalValue - a.totalValue;
+    });
+  } else {
+    filteredRows.sort((a, b) => b.totalValue - a.totalValue);
+  }
+
+  if (scoreboardContextBadge) {
+    const categoryText = scoreboardSettings.category === "All" ? "All categories" : scoreboardSettings.category;
+    const gradeText = scoreboardSettings.grade === "All" ? "All grades" : scoreboardSettings.grade;
+    const rankText = scoreboardSettings.rankingMode === "byGrade" ? "By grade" : "Overall";
+    scoreboardContextBadge.textContent = `${categoryText} • ${gradeText} • ${rankText}`;
+  }
+
+  const gradeRanks = new Map();
+  filteredRows.forEach((row) => {
+    const gradeKey = row.grade || "--";
+    const nextRank = (gradeRanks.get(gradeKey) || 0) + 1;
+    gradeRanks.set(gradeKey, nextRank);
+    row.gradeRank = nextRank;
+  });
+
+  if (!filteredRows.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="7">No scores yet.</td>`;
+    row.innerHTML = `<td colspan="7">No scores for this view.</td>`;
     scoreRows.appendChild(row);
     scoreCache = new Map();
     stopPagination();
@@ -353,17 +419,29 @@ function renderScoreboard(isPaging = false) {
   }
 
   const rowsPerPage = getRowsPerPage(displaySettings);
-  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
   if (!paginationEnabled) {
     pageIndex = 0;
   } else if (pageIndex >= totalPages) {
     pageIndex = 0;
   }
   const start = pageIndex * rowsPerPage;
-  const pageRows = rows.slice(start, start + rowsPerPage);
+  const pageRows = filteredRows.slice(start, start + rowsPerPage);
 
   const nextCache = new Map();
+  let currentGradeLabel = null;
   pageRows.forEach((score, index) => {
+    if (scoreboardSettings.rankingMode === "byGrade") {
+      const gradeLabel = score.grade || "--";
+      if (gradeLabel !== currentGradeLabel) {
+        const headingRow = document.createElement("tr");
+        headingRow.className = "stream-grade-heading";
+        headingRow.innerHTML = `<td colspan="7">${gradeLabel}</td>`;
+        scoreRows.appendChild(headingRow);
+        currentGradeLabel = gradeLabel;
+      }
+    }
+
     const row = document.createElement("tr");
     const detailRow = document.createElement("tr");
     row.className = "stream-score-main";
@@ -378,7 +456,7 @@ function renderScoreboard(isPaging = false) {
       }, 2000);
     }
     row.innerHTML = `
-      <td>${start + index + 1}</td>
+      <td>${scoreboardSettings.rankingMode === "byGrade" ? score.gradeRank : (start + index + 1)}</td>
       <td>${score.athleteName}</td>
       <td>${score.athleteClub}</td>
       <td>${score.category || "--"}</td>

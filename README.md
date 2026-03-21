@@ -44,6 +44,9 @@ No custom backend server is used. The app is static HTML/CSS/JS with Firebase as
     - Manual rows range: `4` to `10`
     - Font scale range: `85%` to `120%`
     - Page duration range: `4s` to `12s`
+    - Scoreboard category filter: `All` or specific category
+    - Scoreboard grade filter: `All` or specific grade
+    - Ranking mode: `Overall` or `By Grade`
   - Auto rows by screen height:
     - `< 1300px`: `5`
     - `1300px - 1899px`: `6`
@@ -179,6 +182,10 @@ competitions/{id}/streamState/current
     manualRows
     fontScale
     pageDurationSeconds
+  scoreboardSettings
+    category
+    grade
+    rankingMode
   updatedAt
 ```
 
@@ -199,6 +206,9 @@ competitions/{id}/streamState/current
    - Manual rows (`4` to `10`)
    - Font scale (`85%` to `120%`)
    - Page duration (`4s` to `12s`)
+   - Scoreboard category (`All` or specific category)
+   - Scoreboard grade (`All` or specific grade)
+   - Ranking mode (`Overall` or `By Grade`)
 7. Use `Reset Defaults` to restore default stream display settings.
 8. Export CSVs if needed.
 
