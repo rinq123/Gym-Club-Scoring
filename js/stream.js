@@ -148,8 +148,9 @@ function spotlightFitsViewport() {
     spotlightPanel.scrollWidth <= spotlightPanel.clientWidth + 1
   );
 
-  const contentBottom = performerScore.getBoundingClientRect().bottom;
-  const scoreVisible = contentBottom <= panelRect.bottom - 6;
+  const scoreVisible = performerScoreBlock?.classList.contains("hidden")
+    ? true
+    : performerScore.getBoundingClientRect().bottom <= panelRect.bottom - 6;
 
   return (
     withinViewport &&
@@ -489,6 +490,9 @@ function renderSpotlight() {
     performerName.textContent = "No performer selected";
     performerClub.textContent = "Club: --";
     performerScore.textContent = "--";
+    if (performerScoreBlock) {
+      performerScoreBlock.classList.remove("hidden");
+    }
     scheduleSpotlightFit();
     return;
   }
@@ -500,6 +504,9 @@ function renderSpotlight() {
     .filter((score) => score.athleteId === streamState.performerId)
     .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];
   performerScore.textContent = latestScore ? latestScore.total.toFixed(3) : "--";
+  if (performerScoreBlock) {
+    performerScoreBlock.classList.add("hidden");
+  }
   scheduleSpotlightFit();
 }
 
