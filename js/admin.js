@@ -1242,15 +1242,15 @@ form.addEventListener("submit", async (event) => {
     hasErrors = true;
   }
   if (Number.isNaN(executionValue)) {
-    setFieldError(executionInput.closest(".field"), "Enter execution.");
+    setFieldError(executionInput.closest(".field"), "Enter execution/tech.");
     hasErrors = true;
   }
   if (Number.isNaN(difficultyValue)) {
-    setFieldError(difficultyInput.closest(".field"), "Enter difficulty.");
+    setFieldError(difficultyInput.closest(".field"), "Enter difficulty/tariff.");
     hasErrors = true;
   }
   if (Number.isNaN(penaltiesValue)) {
-    setFieldError(penaltiesInput.closest(".field"), "Enter penalties.");
+    setFieldError(penaltiesInput.closest(".field"), "Enter penalty.");
     hasErrors = true;
   }
   if (Number.isNaN(totalValue)) {

@@ -91,10 +91,10 @@
                         <label class="field">Gymnast(s)
                             <select name="athlete" id="athlete"></select>
                         </label>
+                        <label class="field">Difficulty / Tariff<input type="number" step="0.001" name="difficulty" id="difficulty"></label>
+                        <label class="field">Execution / Tech<input type="number" step="0.001" name="execution" id="execution"></label>
                         <label class="field">Artistry<input type="number" step="0.001" name="artistry" id="artistry"></label>
-                        <label class="field">Execution<input type="number" step="0.001" name="execution" id="execution"></label>
-                        <label class="field">Difficulty<input type="number" step="0.001" name="difficulty" id="difficulty"></label>
-                        <label class="field">Penalties<input type="number" step="0.001" name="penalties" id="penalties"></label>
+                        <label class="field">Penalty<input type="number" step="0.001" name="penalties" id="penalties"></label>
                         <label class="field">Total Score<input type="number" step="0.001" name="total" id="total"></label>
                         
                         <div class="form-actions">
@@ -225,7 +225,7 @@
                 <div class="help-body">
                     <p><strong>Competition Manager:</strong> Use Set Active to switch what the public sees. Create New makes a fresh competition. Archive Current freezes the old one and creates a new active competition.</p>
                     <p><strong>Manage Gymnast(s):</strong> Add competitor number, club, and tags. Edit to fix typos. Deleting a roster entry removes their scores.</p>
-                    <p><strong>Enter Score:</strong> Pick a category, select gymnast(s), then enter artistry, execution, difficulty, penalties, and total score.</p>
+                    <p><strong>Enter Score:</strong> Pick a category, select gymnast(s), then enter difficulty/tariff, execution/tech, artistry, penalty, and total score.</p>
                     <p><strong>Stream Controls:</strong> Choose a mode (Welcome, Idle, Scoreboard, Mix, Announcement) and select the current performer when spotlighting.</p>
                     <p><strong>Display Settings:</strong> Default is Auto rows + 100% font + 7s page time. Auto uses screen height (5 under 1300px, 6 at 1300-1899px, 7 at 1900px+). Use Manual for fixed 4-10 rows, adjust font 85-120%, set page time 4-12s, and control scoreboard Category/Grade plus Overall vs By-Grade ranking, then click Apply.</p>
                     <p><strong>Lock Admin:</strong> Use this when stepping away to re-enable the PIN gate.</p>
@@ -233,6 +233,6 @@
                 </div>
             </div>
         </div>
-        <script type="module" src="js/admin.js?v=35"></script>
+        <script type="module" src="js/admin.js?v=36"></script>
     </body>
 </html> 
