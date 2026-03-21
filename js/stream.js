@@ -148,7 +148,7 @@ function spotlightFitsViewport() {
     spotlightPanel.scrollWidth <= spotlightPanel.clientWidth + 1
   );
 
-  const scoreVisible = performerScoreBlock?.classList.contains("hidden")
+  const scoreVisible = performerScoreBlock?.style.display === "none"
     ? true
     : performerScore.getBoundingClientRect().bottom <= panelRect.bottom - 6;
 
@@ -491,7 +491,7 @@ function renderSpotlight() {
     performerClub.textContent = "Club: --";
     performerScore.textContent = "--";
     if (performerScoreBlock) {
-      performerScoreBlock.classList.remove("hidden");
+      performerScoreBlock.style.display = "flex";
     }
     scheduleSpotlightFit();
     return;
@@ -505,7 +505,7 @@ function renderSpotlight() {
     .sort((a, b) => toDate(b.timestamp) - toDate(a.timestamp))[0];
   performerScore.textContent = latestScore ? latestScore.total.toFixed(3) : "--";
   if (performerScoreBlock) {
-    performerScoreBlock.classList.add("hidden");
+    performerScoreBlock.style.display = "none";
   }
   scheduleSpotlightFit();
 }
