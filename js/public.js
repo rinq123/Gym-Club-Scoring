@@ -32,7 +32,9 @@ const DEFAULT_SETTINGS = {
 const settingsRef = doc(db, "settingsPublic", "current");
 
 const filterCategory = document.querySelector("#filter-category");
+const filterGrade = document.querySelector("#filter-grade");
 const filterClub = document.querySelector("#filter-club");
+const filterSearch = document.querySelector("#filter-search");
 const tbody = document.querySelector("#score-rows");
 const contextLabel = document.querySelector("#current-context");
 const lastUpdated = document.querySelector("#last-updated");
@@ -50,6 +52,9 @@ const SETTINGS_CACHE_KEY = "publicSettingsCache";
 const SCORES_CACHE_KEY = "publicScoresCache";
 
 function fillSelect(select, options, selectedValue) {
+  if (!select) {
+    return;
+  }
   select.innerHTML = "";
   options.forEach((option) => {
     const el = document.createElement("option");
@@ -63,9 +68,14 @@ function fillSelect(select, options, selectedValue) {
 }
 
 function populateFilters() {
-  fillSelect(filterCategory, ["All", ...settings.categories], "All");
+  const selectedCategory = filterCategory ? filterCategory.value : "All";
+  const selectedGrade = filterGrade ? filterGrade.value : "All";
+  const selectedClub = filterClub ? filterClub.value : "All";
+
+  fillSelect(filterCategory, ["All", ...settings.categories], selectedCategory || "All");
+  fillSelect(filterGrade, ["All", ...settings.grades], selectedGrade || "All");
   const clubs = [...new Set(scores.map((score) => score.athleteClub).filter(Boolean))];
-  fillSelect(filterClub, ["All", ...clubs], "All");
+  fillSelect(filterClub, ["All", ...clubs], selectedClub || "All");
 
   if (publicTitle) {
     const baseName = settings.competitionName || DEFAULT_SETTINGS.competitionName;
@@ -75,7 +85,8 @@ function populateFilters() {
 
 function buildContextLabel() {
   const categoryLabel = filterCategory.value === "All" ? "All Categories" : filterCategory.value;
-  contextLabel.textContent = categoryLabel;
+  const gradeLabel = filterGrade.value === "All" ? "All Grades" : filterGrade.value;
+  contextLabel.textContent = `${categoryLabel} • ${gradeLabel}`;
 }
 
 function toDate(value) {
@@ -90,6 +101,7 @@ function toDate(value) {
 
 function renderScores() {
   tbody.innerHTML = "";
+  const searchTerm = (filterSearch?.value || "").trim().toLowerCase();
 
   const filteredScores = scores
     .map((score) => {
@@ -107,7 +119,24 @@ function renderScores() {
       };
     })
     .filter((score) => (filterCategory.value === "All" ? true : score.category === filterCategory.value))
+    .filter((score) => (filterGrade.value === "All" ? true : score.grade === filterGrade.value))
     .filter((score) => (filterClub.value === "All" ? true : score.club === filterClub.value))
+    .filter((score) => {
+      if (!searchTerm) {
+        return true;
+      }
+      const searchable = [
+        score.athleteName,
+        score.competitorNumber,
+        score.club,
+        score.category,
+        score.grade
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return searchable.includes(searchTerm);
+    })
     .sort((a, b) => b.totalValue - a.totalValue);
 
   const formatScore = (value) => {
@@ -199,7 +228,9 @@ function renderAll() {
 }
 
 filterCategory.addEventListener("change", renderAll);
+filterGrade.addEventListener("change", renderAll);
 filterClub.addEventListener("change", renderAll);
+filterSearch.addEventListener("input", renderScores);
 
 async function loadSettings() {
   const snap = await getDoc(settingsRef);

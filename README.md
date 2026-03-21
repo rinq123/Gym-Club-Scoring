@@ -58,7 +58,8 @@ No custom backend server is used. The app is static HTML/CSS/JS with Firebase as
 - Public page:
   - Manual refresh button only (no automatic Firestore refresh on page load/reload)
   - Local cached snapshot shown until refresh is pressed
-  - Category and club filters
+  - Category, grade, and club filters
+  - Gymnast(s) search bar (name, No., club, category, grade)
   - Smooth fade-out highlight when scores update
 - Scoreboard update animation:
   - Smooth highlight fade transitions on both public and stream scoreboards
