@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gymnastics Stream</title>
-  <link rel="stylesheet" href="css/styles.css?v=50" />
+  <link rel="stylesheet" href="css/styles.css?v=52" />
 </head>
 <body class="display-body stream-body">
   <div class="display stream">
@@ -36,6 +36,12 @@
         <p class="stream-section-label">Announcement</p>
         <p class="stream-idle-title">Announcement in progress</p>
         <p class="stream-idle-subtitle">Please stand by.</p>
+      </section>
+
+      <section id="stream-paused" class="stream-panel stream-paused">
+        <p class="stream-section-label">Competition Paused</p>
+        <p id="stream-paused-title" class="stream-idle-title">There is no competition currently running.</p>
+        <p class="stream-idle-subtitle">The live scoreboard will return when the next competition resumes.</p>
       </section>
 
       <section id="stream-spotlight" class="stream-panel stream-spotlight">
@@ -72,12 +78,14 @@
               </tr>
             </tbody>
           </table>
-          <div class="swipe-hint">Swipe to view more →</div>
+          <div class="swipe-hint">Swipe to view more -></div>
         </div>
       </section>
     </main>
   </div>
 
-  <script type="module" src="js/stream.js?v=29"></script>
+  <script type="module" src="js/stream.js?v=31"></script>
 </body>
 </html>
+
+

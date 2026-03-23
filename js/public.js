@@ -4,8 +4,8 @@ import {
   doc,
   getDoc,
   getDocs,
-  query,
-  orderBy
+  orderBy,
+  query
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 const DEFAULT_SETTINGS = {
@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS = {
   ]
 };
 
+const DEFAULT_PAUSE_MESSAGE = "There is no competition currently running.";
 const settingsRef = doc(db, "settingsPublic", "current");
 
 const filterCategory = document.querySelector("#filter-category");
@@ -38,16 +39,24 @@ const filterSearch = document.querySelector("#filter-search");
 const tbody = document.querySelector("#score-rows");
 const contextLabel = document.querySelector("#current-context");
 const lastUpdated = document.querySelector("#last-updated");
+const pausedCard = document.querySelector("#public-paused");
+const pausedMessage = document.querySelector("#public-paused-message");
+const filtersCard = document.querySelector("#filters");
 const scoreboardCard = document.querySelector("#scoreboard");
 const publicTitle = document.querySelector("#public-title");
 const scoreboardWrap = scoreboardCard ? scoreboardCard.querySelector(".table-wrap") : null;
 const refreshButton = document.querySelector("#refresh-scores");
+const refreshHint = document.querySelector(".refresh-hint");
+const siteFooter = document.querySelector(".site-footer");
 
 let settings = { ...DEFAULT_SETTINGS };
 let scores = [];
 let scoreCache = new Map();
 let activeCompetitionId = null;
 let isRefreshing = false;
+let sitePaused = false;
+let pauseMessageText = DEFAULT_PAUSE_MESSAGE;
+
 const SETTINGS_CACHE_KEY = "publicSettingsCache";
 const SCORES_CACHE_KEY = "publicScoresCache";
 
@@ -74,6 +83,7 @@ function populateFilters() {
 
   fillSelect(filterCategory, ["All", ...settings.categories], selectedCategory || "All");
   fillSelect(filterGrade, ["All", ...settings.grades], selectedGrade || "All");
+
   const clubs = [...new Set(scores.map((score) => score.athleteClub).filter(Boolean))];
   fillSelect(filterClub, ["All", ...clubs], selectedClub || "All");
 
@@ -83,10 +93,37 @@ function populateFilters() {
   }
 }
 
+function renderPausedState() {
+  if (pausedCard) {
+    pausedCard.classList.toggle("hidden", !sitePaused);
+  }
+  if (pausedMessage) {
+    pausedMessage.textContent = pauseMessageText;
+  }
+  if (filtersCard) {
+    filtersCard.classList.toggle("hidden", sitePaused);
+  }
+  if (scoreboardCard) {
+    scoreboardCard.classList.toggle("hidden", sitePaused);
+  }
+  if (siteFooter) {
+    siteFooter.classList.toggle("hidden", sitePaused);
+  }
+  if (refreshHint) {
+    refreshHint.textContent = sitePaused
+      ? "Refresh checks whether the competition has resumed"
+      : "Click Refresh to load scores";
+  }
+}
+
 function buildContextLabel() {
+  if (sitePaused) {
+    contextLabel.textContent = "Competition Paused";
+    return;
+  }
   const categoryLabel = filterCategory.value === "All" ? "All Categories" : filterCategory.value;
   const gradeLabel = filterGrade.value === "All" ? "All Grades" : filterGrade.value;
-  contextLabel.textContent = `${categoryLabel} â€¢ ${gradeLabel}`;
+  contextLabel.textContent = `${categoryLabel} • ${gradeLabel}`;
 }
 
 function toDate(value) {
@@ -222,7 +259,11 @@ function updateLastUpdated() {
 }
 
 function renderAll() {
+  renderPausedState();
   buildContextLabel();
+  if (sitePaused) {
+    return;
+  }
   renderScores();
   updateLastUpdated();
 }
@@ -237,11 +278,15 @@ async function loadSettings() {
   if (!snap.exists()) {
     settings = { ...DEFAULT_SETTINGS };
     activeCompetitionId = null;
+    sitePaused = false;
+    pauseMessageText = DEFAULT_PAUSE_MESSAGE;
     return;
   }
   const data = snap.data();
   settings = { ...DEFAULT_SETTINGS, ...data };
   activeCompetitionId = data.activeCompetitionId || null;
+  sitePaused = Boolean(data.sitePaused);
+  pauseMessageText = (data.pauseMessage || "").trim() || DEFAULT_PAUSE_MESSAGE;
 }
 
 async function loadScores(competitionId) {
@@ -272,7 +317,11 @@ async function refreshAll() {
   try {
     setRefreshing(true);
     await loadSettings();
-    await loadScores(activeCompetitionId);
+    if (sitePaused) {
+      scores = [];
+    } else {
+      await loadScores(activeCompetitionId);
+    }
     try {
       localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
       localStorage.setItem(SCORES_CACHE_KEY, JSON.stringify(scores));
@@ -295,6 +344,8 @@ function loadCachedData() {
     if (cachedSettings) {
       settings = { ...DEFAULT_SETTINGS, ...JSON.parse(cachedSettings) };
       activeCompetitionId = settings.activeCompetitionId || null;
+      sitePaused = Boolean(settings.sitePaused);
+      pauseMessageText = (settings.pauseMessage || "").trim() || DEFAULT_PAUSE_MESSAGE;
     }
     if (cachedScores) {
       scores = JSON.parse(cachedScores);
@@ -311,3 +362,4 @@ if (refreshButton) {
 loadCachedData();
 populateFilters();
 renderAll();
+

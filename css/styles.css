@@ -267,6 +267,17 @@ body.is-locked {
   background: linear-gradient(135deg, #ffffff 0%, #f4f4f4 100%);
 }
 
+.public-paused {
+  text-align: center;
+  background: linear-gradient(135deg, #ffffff 0%, #f4f4f4 100%);
+}
+
+.public-paused-message {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1086,7 +1097,8 @@ table {
 }
 
 .stream-welcome,
-.stream-announcement {
+.stream-announcement,
+.stream-paused {
   min-height: 45vh;
   place-items: center;
   text-align: center;
@@ -1100,7 +1112,8 @@ table {
 }
 
 .stream-welcome::before,
-.stream-announcement::before {
+.stream-announcement::before,
+.stream-paused::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1109,7 +1122,8 @@ table {
 }
 
 .stream-welcome > *,
-.stream-announcement > * {
+.stream-announcement > *,
+.stream-paused > * {
   position: relative;
   z-index: 1;
 }
@@ -1249,7 +1263,8 @@ table {
 }
 
 .stream-panel.is-active.stream-welcome,
-.stream-panel.is-active.stream-announcement {
+.stream-panel.is-active.stream-announcement,
+.stream-panel.is-active.stream-paused {
   display: grid;
   animation: panelFadeUp 0.6s ease;
 }

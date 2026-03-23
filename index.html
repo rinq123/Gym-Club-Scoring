@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gymnastics Scores</title>
-  <link rel="stylesheet" href="css/styles.css?v=50" />
+  <link rel="stylesheet" href="css/styles.css?v=52" />
 </head>
 <body>
     <div class="page page-public">
@@ -26,6 +26,11 @@
         </header>
 
         <main class="container">
+            <section id="public-paused" class="card public-paused hidden">
+                <p class="section-title">Competition Paused</p>
+                <p id="public-paused-message" class="public-paused-message">There is no competition currently running.</p>
+            </section>
+
             <section id="filters" class="card filters">
                 <h2 class="section-title">Filters</h2>
                 <div class="filter-grid">
@@ -75,7 +80,7 @@
                         </thead>
                         <tbody id="score-rows"></tbody>
             </table>
-            <div class="swipe-hint">Swipe to view more →</div>
+            <div class="swipe-hint">Swipe to view more -></div>
         </div>
             </section>
         </main>
@@ -87,6 +92,8 @@
             </div>
         </footer>
     </div>
-    <script type="module" src="js/public.js?v=17"></script>
+    <script type="module" src="js/public.js?v=19"></script>
 </body>
 </html>
+
+

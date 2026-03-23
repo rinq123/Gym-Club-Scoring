@@ -59,11 +59,13 @@ const updated = document.querySelector("#stream-updated");
 const idlePanel = document.querySelector("#stream-idle");
 const welcomePanel = document.querySelector("#stream-welcome");
 const announcementPanel = document.querySelector("#stream-announcement");
+const pausedPanel = document.querySelector("#stream-paused");
 const spotlightPanel = document.querySelector("#stream-spotlight");
 const scoreboardPanel = document.querySelector("#stream-scoreboard");
 const streamEyebrow = document.querySelector("#stream-eyebrow");
 const streamIdleTitle = document.querySelector("#stream-idle-title");
 const streamWelcomeTitle = document.querySelector("#stream-welcome-title");
+const streamPausedTitle = document.querySelector("#stream-paused-title");
 const performerName = document.querySelector("#stream-performer-name");
 const performerClub = document.querySelector("#stream-performer-club");
 const performerScore = document.querySelector("#stream-performer-score");
@@ -90,6 +92,8 @@ let lastPageCount = 1;
 let paginationEnabled = true;
 let spotlightFitRaf = null;
 let lastPageDurationMs = null;
+let sitePaused = false;
+let pauseMessage = "There is no competition currently running.";
 
 const SPOTLIGHT_FIT_BOUNDS = {
   name: { max: 148, min: 48 },
@@ -203,9 +207,20 @@ function scheduleSpotlightFit() {
 }
 
 function setPanel(panel) {
-  [welcomePanel, idlePanel, announcementPanel, spotlightPanel, scoreboardPanel].forEach((section) => {
+  [welcomePanel, idlePanel, announcementPanel, pausedPanel, spotlightPanel, scoreboardPanel].forEach((section) => {
     section.classList.toggle("is-active", section === panel);
   });
+}
+
+function clearCompetitionSubscriptions() {
+  if (unsubScores) {
+    unsubScores();
+    unsubScores = null;
+  }
+  if (unsubStream) {
+    unsubStream();
+    unsubStream = null;
+  }
 }
 
 function toDate(value) {
@@ -511,6 +526,25 @@ function renderSpotlight() {
 }
 
 function renderStream() {
+  if (sitePaused) {
+    if (mixTimer) {
+      clearInterval(mixTimer);
+      mixTimer = null;
+    }
+    mixPhase = "idle";
+    updated.textContent = "Competition paused";
+    title.textContent = "Competition Paused";
+    if (streamPausedTitle) {
+      streamPausedTitle.textContent = pauseMessage;
+    }
+    if (streamRoot) {
+      streamRoot.classList.remove("is-mode-spotlight");
+    }
+    setPaginationEnabled(false);
+    setPanel(pausedPanel);
+    return;
+  }
+
   const mode = streamState.mode || "idle";
   const mixSeconds = streamState.mixSeconds || 20;
   const categoryTag = streamState.performerCategory;
@@ -595,6 +629,7 @@ function triggerUpdating() {
 
 function bindCompetition(competitionId) {
   if (!competitionId) {
+    clearCompetitionSubscriptions();
     scores = [];
     streamState = normalizeStreamState();
     pageIndex = 0;
@@ -606,12 +641,7 @@ function bindCompetition(competitionId) {
   pageIndex = 0;
   triggerUpdating();
   renderStream();
-  if (unsubScores) {
-    unsubScores();
-  }
-  if (unsubStream) {
-    unsubStream();
-  }
+  clearCompetitionSubscriptions();
   const scoresCol = collection(db, "competitions", competitionId, "scores");
   const streamRef = doc(db, "competitions", competitionId, "streamState", "current");
 
@@ -632,14 +662,28 @@ function bindCompetition(competitionId) {
 
 onSnapshot(settingsRef, (snap) => {
   if (!snap.exists()) {
+    clearCompetitionSubscriptions();
     settings = { ...DEFAULT_SETTINGS };
+    activeCompetitionId = null;
+    scores = [];
+    streamState = normalizeStreamState();
+    sitePaused = false;
+    pauseMessage = "There is no competition currently running.";
     renderStream();
     return;
   }
   const data = snap.data();
   settings = { ...DEFAULT_SETTINGS, ...data };
+  sitePaused = Boolean(data.sitePaused);
+  pauseMessage = (data.pauseMessage || "").trim() || "There is no competition currently running.";
   const nextCompetitionId = data.activeCompetitionId || null;
-  if (nextCompetitionId && nextCompetitionId !== activeCompetitionId) {
+  if (sitePaused) {
+    activeCompetitionId = nextCompetitionId;
+    clearCompetitionSubscriptions();
+    scores = [];
+    streamState = normalizeStreamState();
+    pageIndex = 0;
+  } else if (nextCompetitionId !== activeCompetitionId || !unsubScores || !unsubStream) {
     activeCompetitionId = nextCompetitionId;
     bindCompetition(activeCompetitionId);
   }

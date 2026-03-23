@@ -70,6 +70,10 @@ const streamScoreboardGradeSelect = document.querySelector("#stream-scoreboard-g
 const streamScoreboardRankingModeSelect = document.querySelector("#stream-scoreboard-ranking-mode");
 const streamDisplayApplyBtn = document.querySelector("#stream-display-apply");
 const streamDisplayResetBtn = document.querySelector("#stream-display-reset");
+const publicPauseMessageInput = document.querySelector("#public-pause-message");
+const publicPauseBtn = document.querySelector("#pause-public-site");
+const publicResumeBtn = document.querySelector("#resume-public-site");
+const publicPauseStatus = document.querySelector("#public-pause-status");
 const resetDemoBtn = document.querySelector("#reset-demo");
 const lockAdminBtn = document.querySelector("#lock-admin");
 const authGate = document.querySelector("#auth-gate");
@@ -103,6 +107,7 @@ const recentSearchInput = document.querySelector("#recent-search");
 const settingsRef = doc(db, "settings", "current");
 const publicSettingsRef = doc(db, "settingsPublic", "current");
 const competitionsCol = collection(db, "competitions");
+const DEFAULT_PAUSE_MESSAGE = "There is no competition currently running.";
 
 let settings = { ...DEFAULT_SETTINGS };
 let athletes = [];
@@ -152,6 +157,8 @@ let recentSearchTerm = "";
 let scoreAthleteSearchTerm = "";
 let streamPerformerSearchTerm = "";
 let competitionSearchTerm = "";
+let sitePaused = false;
+let pauseMessage = DEFAULT_PAUSE_MESSAGE;
 
 const ADMIN_EMAIL_KEY = "eclipseAdminEmail";
 
@@ -170,8 +177,45 @@ function buildPublicSettings(nextSettings) {
     competitionName: nextSettings.competitionName,
     categories: nextSettings.categories,
     grades: nextSettings.grades,
-    activeCompetitionId
+    activeCompetitionId,
+    sitePaused,
+    pauseMessage
   };
+}
+
+function renderPublicPauseControls() {
+  if (publicPauseMessageInput) {
+    publicPauseMessageInput.value = pauseMessage || DEFAULT_PAUSE_MESSAGE;
+  }
+  if (publicPauseStatus) {
+    publicPauseStatus.textContent = sitePaused
+      ? `Public status: Paused - ${pauseMessage || DEFAULT_PAUSE_MESSAGE}`
+      : "Public status: Live";
+  }
+  if (publicPauseBtn) {
+    publicPauseBtn.disabled = sitePaused;
+  }
+  if (publicResumeBtn) {
+    publicResumeBtn.disabled = !sitePaused;
+  }
+}
+
+async function setPublicPauseState(paused) {
+  const nextMessage = (publicPauseMessageInput?.value || "").trim() || DEFAULT_PAUSE_MESSAGE;
+  sitePaused = paused;
+  pauseMessage = nextMessage;
+  renderPublicPauseControls();
+  await setDoc(settingsRef, {
+    activeCompetitionId,
+    sitePaused,
+    pauseMessage
+  }, { merge: true });
+  await setDoc(publicSettingsRef, {
+    sitePaused,
+    pauseMessage,
+    activeCompetitionId
+  }, { merge: true });
+  await syncPublicSettings(settings);
 }
 
 function buildScoreKey(athleteId, category) {
@@ -1500,6 +1544,18 @@ competitionDeleteBtn.addEventListener("click", async () => {
   await deleteCompetition(selectedId);
 });
 
+if (publicPauseBtn) {
+  publicPauseBtn.addEventListener("click", async () => {
+    await setPublicPauseState(true);
+  });
+}
+
+if (publicResumeBtn) {
+  publicResumeBtn.addEventListener("click", async () => {
+    await setPublicPauseState(false);
+  });
+}
+
 lockAdminBtn.addEventListener("click", () => {
   pinInput.value = "";
   pinError.classList.add("hidden");
@@ -1748,6 +1804,9 @@ async function startAdminSession() {
 
   onSnapshot(settingsRef, (snap) => {
     const data = snap.exists() ? snap.data() : {};
+    sitePaused = Boolean(data.sitePaused);
+    pauseMessage = (data.pauseMessage || "").trim() || DEFAULT_PAUSE_MESSAGE;
+    renderPublicPauseControls();
     const nextActive = data.activeCompetitionId || activeCompetitionId;
     if (nextActive && nextActive !== activeCompetitionId) {
       activeCompetitionId = nextActive;
@@ -1772,6 +1831,7 @@ if (emailInput && cachedEmail) {
 }
 
 renderStreamDisplayControls();
+renderPublicPauseControls();
 
 
 

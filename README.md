@@ -35,6 +35,10 @@ No custom backend server is used. The app is static HTML/CSS/JS with Firebase as
   - Category dropdown includes `All` (default)
   - Grade filter for gymnast selection
   - Gymnast search filter in score panel
+- Pause public and stream:
+  - Admin can pause both `index.html` and `stream.html` with a custom message
+  - Public page stops loading competition scores while paused
+  - Stream display unsubscribes from competition score and stream listeners while paused
 - Stream controls:
   - Modes: Welcome, Idle/Break, Scoreboard, Mix, Announcement, Spotlight
   - Performer search filter
@@ -128,12 +132,16 @@ Note: public page is manual refresh to reduce read usage.
 ```txt
 settings/current
   activeCompetitionId
+  sitePaused
+  pauseMessage
 
 settingsPublic/current
   competitionName
   categories[]
   grades[]
   activeCompetitionId
+  sitePaused
+  pauseMessage
 
 competitions/{id}
   name
@@ -210,7 +218,8 @@ competitions/{id}/streamState/current
    - Scoreboard grade (`All` or specific grade)
    - Ranking mode (`Overall` or `By Grade`)
 7. Use `Reset Defaults` to restore default stream display settings.
-8. Export CSVs if needed.
+8. Use `Pause Public + Stream` when the competition is finished or between events.
+9. Export CSVs if needed.
 
 ---
 
@@ -288,3 +297,4 @@ For rapid iteration, targeted deploy is usually better.
 ## License
 
 Private project for Eclipse Gymnastics Invitational.
+

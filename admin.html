@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gymnastics Scores</title>
-        <link rel="stylesheet" href="css/styles.css?v=50">
+        <link rel="stylesheet" href="css/styles.css?v=52">
     </head>
     <body>
         <div id="auth-gate" class="auth-gate">
@@ -67,12 +67,20 @@
                         <h2 class="section-title">Admin Utilities</h2>
                         <span class="badge">Quick actions</span>
                     </div>
+                    <div class="form-grid">
+                        <label class="field">Public Pause Message
+                            <input type="text" id="public-pause-message" placeholder="There is no competition currently running.">
+                        </label>
+                    </div>
                     <div class="form-actions">
+                        <button type="button" id="pause-public-site" class="btn danger">Pause Public + Stream</button>
+                        <button type="button" id="resume-public-site" class="btn ghost">Resume Public + Stream</button>
                         <button type="button" id="reset-demo" class="btn danger">Clear Competition Data</button>
                         <button type="button" id="lock-admin" class="btn ghost">Lock Admin</button>
                         <button type="button" id="export-athletes" class="btn ghost">Export Gymnast(s)</button>
                         <button type="button" id="export-scores" class="btn ghost">Export Scores</button>
                     </div>
+                    <p id="public-pause-status" class="footer-note">Public status: Live</p>
                 </section>
 
                 <section class="card form-card">
@@ -228,11 +236,13 @@
                     <p><strong>Enter Score:</strong> Pick a category, select gymnast(s), then enter difficulty/tariff, execution/tech, artistry, penalty, and total score.</p>
                     <p><strong>Stream Controls:</strong> Choose a mode (Welcome, Idle, Scoreboard, Mix, Announcement) and select the current performer when spotlighting.</p>
                     <p><strong>Display Settings:</strong> Default is Auto rows + 100% font + 7s page time. Auto uses screen height (5 under 1300px, 6 at 1300-1899px, 7 at 1900px+). Use Manual for fixed 4-10 rows, adjust font 85-120%, set page time 4-12s, and control scoreboard Category/Grade plus Overall vs By-Grade ranking, then click Apply.</p>
+                    <p><strong>Pause Public + Stream:</strong> Replaces the public scoreboard and big-screen display with a no competition message and stops score/stream listeners from loading competition data.</p>
                     <p><strong>Lock Admin:</strong> Use this when stepping away to re-enable the PIN gate.</p>
                     <p><strong>Clear Competition Data:</strong> Wipes gymnast(s) and scores for the active competition. Use only when starting fresh.</p>
                 </div>
             </div>
         </div>
-        <script type="module" src="js/admin.js?v=36"></script>
+        <script type="module" src="js/admin.js?v=38"></script>
     </body>
 </html> 
+
